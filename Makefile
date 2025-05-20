@@ -1,11 +1,12 @@
+BUILD_DIR=./build
 BINARY=main
-BINARY_PATH=./$(BINARY)
+BINARY_PATH=$(BUILD_DIR)/$(BINARY)
 SRC=main.go
 
 all: build
 
 build: $(SRC)
-	go build -o $(BINARY) $(SRC)
+	go build -o $(BINARY_PATH) $(SRC)
 
 run: build
 	sudo $(BINARY_PATH)
