@@ -1,6 +1,7 @@
 .gitconfig
 # test directory
 tmp/
+bundles
 
 # Compiled Object files
 *.o
