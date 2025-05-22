@@ -1,7 +1,8 @@
 .gitconfig
-# test directory
+# test directory for files
 tmp/
-bundles
+# test directory for toy sources
+playground/
 
 # Compiled Object files
 *.o
