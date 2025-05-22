@@ -18,8 +18,8 @@
 
 * shimv2-c: 基于C的、对接containerd shimv2 的mica runtime 实现(便于与mica对接)，其中, shim 的实现不一定基于C。
 * shimv2: 基于go的、对接containerd shimv2 的mica runtime 实现, 我们目前都在 containerd源码树下实现，软连接过来，很快就会去掉这个方式
-* runmica: 基于go的mica runtime 实现, 直接作为 runc drop-in replacement, 同样暂时都是软连接runc的源码树，很快会
-* runmicars: 基于rust的 mica runtime实现, 直接作为 runc drop-in replacement, 以youki 为参考实现
+* rmica: 基于go的mica runtime 实现, 直接作为 runc drop-in replacement, 同样暂时都是软连接runc的源码树，很快会
+* rsmica: 基于rust的 mica runtime实现, 直接作为 runc drop-in replacement, 以youki 为参考实现
 
 ## TODO
 
