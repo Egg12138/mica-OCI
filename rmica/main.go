@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/opencontainers/runc/rmica/commands"
 	"github.com/urfave/cli"
 )
 
@@ -76,17 +77,12 @@ func main() {
 		},
 	}
 
-	// TODO: lots of commands were not provided
 	app.Commands = []cli.Command{
-		createCommand,
-		startCommand,
-		runCommand,
-		killCommand,
-		deleteCommand,
-		psCommand,
-		execCommand,
-		listCommand,
-		stateCommand,
+		commands.CreateCommand,
+		commands.RunCommand,
+		commands.DeleteCommand,
+		commands.ListCommand,
+		commands.StateCommand,
 	}
 
 	app.Before = func(context *cli.Context) error {
@@ -107,7 +103,7 @@ func main() {
 
 	cli.ErrWriter = &FatalWriter{cli.ErrWriter}
 	if err := app.Run(os.Args); err != nil {
-		fmt.Fprintf(os.Stderr, "rmica: %v\n", err)
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 } 

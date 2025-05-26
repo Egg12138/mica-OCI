@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/sirupsen/logrus"
@@ -218,4 +219,23 @@ func (f *FatalWriter) Write(p []byte) (n int, err error) {
 		return f.cliErrWriter.Write(p)
 	}
 	return len(p), nil
+}
+
+func createPidFile(path string, pid int) error {
+	tmpDir := filepath.Dir(path)
+	tmpName := filepath.Join(tmpDir, "."+filepath.Base(path))
+	
+	f, err := os.OpenFile(tmpName, os.O_RDWR|os.O_CREATE|os.O_EXCL|os.O_SYNC, 0o666)
+	if err != nil {
+		return err
+	}
+	
+	_, err = f.WriteString(strconv.Itoa(pid))
+	f.Close()
+	if err != nil {
+		os.Remove(tmpName)
+		return err
+	}
+	
+	return os.Rename(tmpName, path)
 }
