@@ -9,6 +9,7 @@ LDFLAGS ?= "-w -s"
 # M=mode of test/delete target
 # R=value of --runtime=
 # C=container name you wanna delete
+# K=keep the container created (default to be false)
 
 R ?= rmica
 SHELL_IMG ?= busybox
@@ -21,9 +22,13 @@ IMG := $(SHELL_IMG)
 endif
 
 # RUN_OPTS depends on R
-RUN_OPTS ?= --rm --runtime=$(R)
+RUN_OPTS ?= --runtime=$(R)
 ifeq ($(M),it)
 RUN_OPTS := $(RUN_OPTS) -it
+endif
+
+ifeq ($(K),)
+RUN_OPTS := $(RUN_OPTS) --rm
 endif
 
 # CNTR_NAME depends on final IMG value
@@ -69,7 +74,7 @@ delete_all:
 
 delete:
 ifneq ($(C),)
-	@echo "$(DCKR) rm $(C)"
+	$(DCKR) rm $(C)
 else
-	@echo "$(DCKR) rm $(CNTR_NAME)"
+	$(DCKR) rm $(CNTR_NAME)
 endif
