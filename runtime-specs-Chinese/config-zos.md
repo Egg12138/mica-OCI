@@ -1,41 +1,41 @@
-# <a name="ZOSContainerConfiguration" />z/OS Container Configuration
+# <a name="ZOSContainerConfiguration" />z/OS 容器配置 (z/OS Container Configuration)
 
-This document describes the schema for the [z/OS-specific section](config.md#platform-specific-configuration) of the [container configuration](config.md).
-The z/OS container specification uses z/OS UNIX kernel features like namespaces and filesystem jails to fulfill the spec.
+本文档描述了[容器配置](config.md)中[平台特定配置](config.md#platform-specific-configuration)的 z/OS 特定部分的模式。
+z/OS 容器规范使用 z/OS UNIX 内核功能（如命名空间和文件系统监狱）来实现规范。
 
-Applications expecting a z/OS environment will very likely expect these file paths to be set up correctly.
+期望 z/OS 环境的应用程序很可能期望这些文件路径被正确设置。
 
-The following filesystems SHOULD be made available in each container's filesystem:
+以下文件系统应该在每个容器的文件系统中可用：
 
-| Path     | Type   |
+| 路径     | 类型   |
 | -------- | ------ |
 | /proc    | [proc][] |
 
-## <a name="configZOSNamespaces" />Namespaces
+## <a name="configZOSNamespaces" />命名空间 (Namespaces)
 
-A namespace wraps a global system resource in an abstraction that makes it appear to the processes within the namespace that they have their own isolated instance of the global resource.
-Changes to the global resource are visible to other processes that are members of the namespace, but are invisible to other processes.
-For more information, see https://www.ibm.com/docs/zos/latest?topic=planning-namespaces-zos-unix.
+命名空间将全局系统资源包装在一个抽象中，使命名空间内的进程看起来拥有自己的全局资源隔离实例。
+对全局资源的更改对作为命名空间成员的其他进程可见，但对其他进程不可见。
+有关更多信息，请参见 https://www.ibm.com/docs/zos/latest?topic=planning-namespaces-zos-unix。
 
-Namespaces are specified as an array of entries inside the `namespaces` root field.
-The following parameters can be specified to set up namespaces:
+命名空间在 `namespaces` 根字段内指定为条目数组。
+可以指定以下参数来设置命名空间：
 
-* **`type`** *(string, REQUIRED)* - namespace type. The following namespace types SHOULD be supported:
-    * **`pid`** processes inside the container will only be able to see other processes inside the same container or inside the same pid namespace.
-    * **`mount`** the container will have an isolated mount table.
-    * **`ipc`** processes inside the container will only be able to communicate to other processes inside the same container via system level IPC.
-    * **`uts`** the container will be able to have its own hostname and domain name.
-* **`path`** *(string, OPTIONAL)* - namespace file.
-    This value MUST be an absolute path in the [runtime mount namespace](glossary.md#runtime-namespace).
-    The runtime MUST place the container process in the namespace associated with that `path`.
-    The runtime MUST [generate an error](runtime.md#errors) if `path` is not associated with a namespace of type `type`.
+* **`type`** *(string, 必需)* - 命名空间类型。应该支持以下命名空间类型：
+    * **`pid`** 容器内的进程只能看到同一容器内或同一 pid 命名空间内的其他进程。
+    * **`mount`** 容器将有一个隔离的挂载表。
+    * **`ipc`** 容器内的进程只能通过系统级 IPC 与同一容器内的其他进程通信。
+    * **`uts`** 容器将能够拥有自己的主机名和域名。
+* **`path`** *(string, 可选)* - 命名空间文件。
+    此值必须是[运行时挂载命名空间](glossary.md#runtime-namespace)中的绝对路径。
+    运行时必须将容器进程放在与该 `path` 关联的命名空间中。
+    如果 `path` 与类型为 `type` 的命名空间不关联，运行时必须[生成错误](runtime.md#errors)。
 
-    If `path` is not specified, the runtime MUST create a new [container namespace](glossary.md#container-namespace) of type `type`.
+    如果未指定 `path`，运行时必须创建类型为 `type` 的新[容器命名空间](glossary.md#container-namespace)。
 
-If a namespace type is not specified in the `namespaces` array, the container MUST inherit the [runtime namespace](glossary.md#runtime-namespace) of that type.
-If a `namespaces` field contains duplicated namespaces with same `type`, the runtime MUST [generate an error](runtime.md#errors).
+如果 `namespaces` 数组中未指定命名空间类型，容器必须继承该类型的[运行时命名空间](glossary.md#runtime-namespace)。
+如果 `namespaces` 字段包含具有相同 `type` 的重复命名空间，运行时必须[生成错误](runtime.md#errors)。
 
-### Example
+### 示例
 
 ```json
 "namespaces": [
@@ -53,4 +53,4 @@ If a `namespaces` field contains duplicated namespaces with same `type`, the run
         "type": "uts"
     }
 ]
-```
+``` 

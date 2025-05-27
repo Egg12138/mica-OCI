@@ -1,13 +1,13 @@
-# <a name="linuxFeatures" />Linux Features Structure
+# <a name="linuxFeatures" />Linux 功能结构
 
-This document describes the [Linux-specific section](features.md#platform-specific-features) of the [Features structure](features.md).
+本文档描述了[功能结构](features.md)的[Linux特定部分](features.md#platform-specific-features)。
 
-## <a name="linuxFeaturesNamespaces" />Namespaces
+## <a name="linuxFeaturesNamespaces" />命名空间
 
-* **`namespaces`** (array of strings, OPTIONAL) The recognized names of the namespaces, including namespaces that might not be supported by the host operating system.
-  The runtime MUST recognize the elements in this array as the [`type` of `linux.namespaces` objects in `config.json`](config-linux.md#namespaces).
+* **`namespaces`** (字符串数组，OPTIONAL) 命名空间的识别名称，包括主机操作系统可能不支持的名称空间。
+  运行时必须将此数组中的元素识别为[`config.json`中`linux.namespaces`对象的`type`](config-linux.md#namespaces)。
 
-### Example
+### 示例
 
 ```json
 "namespaces": [
@@ -23,10 +23,10 @@ This document describes the [Linux-specific section](features.md#platform-specif
 
 ## <a name="linuxFeaturesCapabilities" />Capabilities
 
-* **`capabilities`** (array of strings, OPTIONAL) The recognized names of the capabilities, including capabilities that might not be supported by the host operating system.
-  The runtime MUST recognize the elements in this array in the [`process.capabilities` object of `config.json`](config.md#linux-process).
+* **`capabilities`** (字符串数组，OPTIONAL) capabilities的识别名称，包括主机操作系统可能不支持的功能。
+  运行时必须将此数组中的元素识别为[`config.json`的`process.capabilities`对象](config.md#linux-process)。
 
-### Example
+### 示例
 
 ```json
 "capabilities": [
@@ -76,16 +76,16 @@ This document describes the [Linux-specific section](features.md#platform-specif
 
 ## <a name="linuxFeaturesCgroup" />Cgroup
 
-**`cgroup`** (object, OPTIONAL) represents the runtime's implementation status of cgroup managers.
-Irrelevant to the cgroup version of the host operating system.
+**`cgroup`** (对象，OPTIONAL) 表示运行时对cgroup管理器的实现状态。
+与主机操作系统的cgroup版本无关。
 
-* **`v1`** (bool, OPTIONAL) represents whether the runtime supports cgroup v1.
-* **`v2`** (bool, OPTIONAL) represents whether the runtime supports cgroup v2.
-* **`systemd`** (bool, OPTIONAL) represents whether the runtime supports system-wide systemd cgroup manager.
-* **`systemdUser`** (bool, OPTIONAL) represents whether the runtime supports user-scoped systemd cgroup manager.
-* **`rdma`** (bool, OPTIONAL) represents whether the runtime supports RDMA cgroup controller.
+* **`v1`** (布尔值，OPTIONAL) 表示运行时是否支持cgroup v1。
+* **`v2`** (布尔值，OPTIONAL) 表示运行时是否支持cgroup v2。
+* **`systemd`** (布尔值，OPTIONAL) 表示运行时是否支持系统范围的systemd cgroup管理器。
+* **`systemdUser`** (布尔值，OPTIONAL) 表示运行时是否支持用户范围的systemd cgroup管理器。
+* **`rdma`** (布尔值，OPTIONAL) 表示运行时是否支持RDMA cgroup控制器。
 
-### Example
+### 示例
 
 ```json
 "cgroup": {
@@ -99,23 +99,23 @@ Irrelevant to the cgroup version of the host operating system.
 
 ## <a name="linuxFeaturesSeccomp" />Seccomp
 
-**`seccomp`** (object, OPTIONAL) represents the runtime's implementation status of seccomp.
-Irrelevant to the kernel version of the host operating system.
+**`seccomp`** (对象，OPTIONAL) 表示运行时对seccomp的实现状态。
+与主机操作系统的内核版本无关。
 
-* **`enabled`** (bool, OPTIONAL) represents whether the runtime supports seccomp.
-* **`actions`** (array of strings, OPTIONAL) The recognized names of the seccomp actions.
-  The runtime MUST recognize the elements in this array in the [`syscalls[].action` property of the `linux.seccomp` object in `config.json`](config-linux.md#seccomp).
-* **`operators`** (array of strings, OPTIONAL) The recognized names of the seccomp operators.
-  The runtime MUST recognize the elements in this array in the [`syscalls[].args[].op` property of the `linux.seccomp` object in `config.json`](config-linux.md#seccomp).
-* **`archs`** (array of strings, OPTIONAL) The recognized names of the seccomp architectures.
-  The runtime MUST recognize the elements in this array in the [`architectures` property of the `linux.seccomp` object in `config.json`](config-linux.md#seccomp).
-* **`knownFlags`** (array of strings, OPTIONAL) The recognized names of the seccomp flags.
-  The runtime MUST recognize the elements in this array in the [`flags` property of the `linux.seccomp` object in `config.json`](config-linux.md#seccomp).
-* **`supportedFlags`** (array of strings, OPTIONAL) The recognized and supported names of the seccomp flags.
-  This list may be a subset of `knownFlags` due to some flags not supported by the current kernel and/or libseccomp.
-  The runtime MUST recognize and support the elements in this array in the [`flags` property of the `linux.seccomp` object in `config.json`](config-linux.md#seccomp).
+* **`enabled`** (布尔值，OPTIONAL) 表示运行时是否支持seccomp。
+* **`actions`** (字符串数组，OPTIONAL) seccomp操作的识别名称。
+  运行时必须将此数组中的元素识别为[`config.json`中`linux.seccomp`对象的`syscalls[].action`属性](config-linux.md#seccomp)。
+* **`operators`** (字符串数组，OPTIONAL) seccomp操作符的识别名称。
+  运行时必须将此数组中的元素识别为[`config.json`中`linux.seccomp`对象的`syscalls[].args[].op`属性](config-linux.md#seccomp)。
+* **`archs`** (字符串数组，OPTIONAL) seccomp架构的识别名称。
+  运行时必须将此数组中的元素识别为[`config.json`中`linux.seccomp`对象的`architectures`属性](config-linux.md#seccomp)。
+* **`knownFlags`** (字符串数组，OPTIONAL) seccomp标志的识别名称。
+  运行时必须将此数组中的元素识别为[`config.json`中`linux.seccomp`对象的`flags`属性](config-linux.md#seccomp)。
+* **`supportedFlags`** (字符串数组，OPTIONAL) seccomp标志的识别和支持名称。
+  由于某些标志不被当前内核和/或libseccomp支持，此列表可能是`knownFlags`的子集。
+  运行时必须识别并支持此数组中的元素在[`config.json`中`linux.seccomp`对象的`flags`属性](config-linux.md#seccomp)中的使用。
 
-### Example
+### 示例
 
 ```json
 "seccomp": {
@@ -167,12 +167,12 @@ Irrelevant to the kernel version of the host operating system.
 
 ## <a name="linuxFeaturesApparmor" />AppArmor
 
-**`apparmor`** (object, OPTIONAL) represents the runtime's implementation status of AppArmor.
-Irrelevant to the availability of AppArmor on the host operating system.
+**`apparmor`** (对象，OPTIONAL) 表示运行时对AppArmor的实现状态。
+与主机操作系统上AppArmor的可用性无关。
 
-* **`enabled`** (bool, OPTIONAL) represents whether the runtime supports AppArmor.
+* **`enabled`** (布尔值，OPTIONAL) 表示运行时是否支持AppArmor。
 
-### Example
+### 示例
 
 ```json
 "apparmor": {
@@ -182,12 +182,12 @@ Irrelevant to the availability of AppArmor on the host operating system.
 
 ## <a name="linuxFeaturesApparmor" />SELinux
 
-**`selinux`** (object, OPTIONAL) represents the runtime's implementation status of SELinux.
-Irrelevant to the availability of SELinux on the host operating system.
+**`selinux`** (对象，OPTIONAL) 表示运行时对SELinux的实现状态。
+与主机操作系统上SELinux的可用性无关。
 
-* **`enabled`** (bool, OPTIONAL) represents whether the runtime supports SELinux.
+* **`enabled`** (布尔值，OPTIONAL) 表示运行时是否支持SELinux。
 
-### Example
+### 示例
 
 ```json
 "selinux": {
@@ -197,14 +197,14 @@ Irrelevant to the availability of SELinux on the host operating system.
 
 ## <a name="linuxFeaturesIntelRdt" />Intel RDT
 
-**`intelRdt`** (object, OPTIONAL) represents the runtime's implementation status of Intel RDT.
-Irrelevant to the availability of Intel RDT on the host operating system.
+**`intelRdt`** (对象，OPTIONAL) 表示运行时对Intel RDT的实现状态。
+与主机操作系统上Intel RDT的可用性无关。
 
-* **`enabled`** (bool, OPTIONAL) represents whether the runtime supports Intel RDT.
-* **`schemata`** (bool, OPTIONAL) represents whether the
-  (`schemata` field of `linux.intelRdt` in `config.json`)[config-linux.md#intelrdt] is supported.
+* **`enabled`** (布尔值，OPTIONAL) 表示运行时是否支持Intel RDT。
+* **`schemata`** (布尔值，OPTIONAL) 表示是否支持
+  ([`config.json`中`linux.intelRdt`的`schemata`字段](config-linux.md#intelrdt))。
 
-### Example
+### 示例
 
 ```json
 "intelRdt": {
@@ -213,16 +213,16 @@ Irrelevant to the availability of Intel RDT on the host operating system.
 }
 ```
 
-## <a name="linuxFeaturesMountExtensions" />MountExtensions
+## <a name="linuxFeaturesMountExtensions" />挂载扩展
 
-**`mountExtensions`** (object, OPTIONAL) represents whether the runtime supports certain mount features, irrespective of the availability of the features on the host operating system.
+**`mountExtensions`** (对象，OPTIONAL) 表示运行时是否支持某些挂载功能，与主机操作系统上这些功能的可用性无关。
 
-* **`idmap`** (object, OPTIONAL) represents whether the runtime supports idmap mounts using the `uidMappings` and `gidMappings` properties of the mount.
-  * **`enabled`** (bool, OPTIONAL) represents whether the runtime parses and attempts to use the `uidMappings` and `gidMappings` properties of mounts if provided.
-    Note that it is possible for runtimes to have partial implementations of id-mapped mounts support (such as only allowing mounts which have mappings matching the container's user namespace, or only allowing the id-mapped bind-mounts).
-    In such cases, runtimes MUST still set this value to `true`, to indicate that the runtime recognises the `uidMappings` and `gidMappings` properties.
+* **`idmap`** (对象，OPTIONAL) 表示运行时是否支持使用挂载的`uidMappings`和`gidMappings`属性的idmap挂载。
+  * **`enabled`** (布尔值，OPTIONAL) 表示如果提供了挂载的`uidMappings`和`gidMappings`属性，运行时是否解析并尝试使用它们。
+    注意，运行时可能对id-mapped挂载支持有部分实现（例如只允许具有与容器用户命名空间匹配的映射的挂载，或只允许id-mapped绑定挂载）。
+    在这种情况下，运行时仍必须将此值设置为`true`，以表明运行时识别`uidMappings`和`gidMappings`属性。
 
-### Example
+### 示例
 
 ```json
 "mountExtensions": {
@@ -232,16 +232,16 @@ Irrelevant to the availability of Intel RDT on the host operating system.
 }
 ```
 
-## <a name="linuxFeaturesNetDevices" />NetDevices
+## <a name="linuxFeaturesNetDevices" />网络设备
 
-**`netDevices`** (object, OPTIONAL) represents the runtime's implementation status of Linux network devices.
+**`netDevices`** (对象，OPTIONAL) 表示运行时对Linux网络设备的实现状态。
 
-* **`enabled`** (bool, OPTIONAL) represents whether the runtime supports the capability to move Linux network devices into the container's network namespace.
+* **`enabled`** (布尔值，OPTIONAL) 表示运行时是否支持将Linux网络设备移动到容器的网络命名空间的能力。
 
-### Example
+### 示例
 
 ```json
 "netDevices": {
   "enabled": true
 }
-```
+``` 

@@ -1,51 +1,51 @@
-# <a name="linuxContainerConfiguration" />Linux Container Configuration
+# <a name="linuxContainerConfiguration" />Linux 容器配置
 
-This document describes the schema for the [Linux-specific section](config.md#platform-specific-configuration) of the [container configuration](config.md).
-The Linux container specification uses various kernel features like namespaces, cgroups, capabilities, LSM, and filesystem jails to fulfill the spec.
+本文档描述了[容器配置](config.md)中[Linux特定部分](config.md#platform-specific-configuration)的架构。
+Linux容器规范使用各种内核特性，如命名空间、cgroups、capabilities、LSM和文件系统隔离来实现规范。
 
-## <a name="configLinuxDefaultFilesystems" />Default Filesystems
+## <a name="configLinuxDefaultFilesystems" />默认文件系统
 
-The Linux ABI includes both syscalls and several special file paths.
-Applications expecting a Linux environment will very likely expect these file paths to be set up correctly.
+Linux ABI 包括系统调用和几个特殊的文件路径。
+期望在Linux环境中运行的应用程序很可能需要这些文件路径被正确设置。
 
-The following filesystems SHOULD be made available in each container's filesystem:
+以下文件系统应该在每个容器的文件系统中可用：
 
-| Path     | Type   |
+| 路径     | 类型   |
 | -------- | ------ |
 | /proc    | [proc][] |
 | /sys     | [sysfs][]  |
 | /dev/pts | [devpts][] |
 | /dev/shm | [tmpfs][]  |
 
-## <a name="configLinuxNamespaces" />Namespaces
+## <a name="configLinuxNamespaces" />命名空间
 
-A namespace wraps a global system resource in an abstraction that makes it appear to the processes within the namespace that they have their own isolated instance of the global resource.
-Changes to the global resource are visible to other processes that are members of the namespace, but are invisible to other processes.
-For more information, see the [namespaces(7)][namespaces.7_2] man page.
+命名空间将全局系统资源包装在一个抽象层中，使得命名空间内的进程看起来拥有自己的全局资源隔离实例。
+对全局资源的更改对作为命名空间成员的其他进程可见，但对其他进程不可见。
+更多信息，请参见 [namespaces(7)][namespaces.7_2] 手册页。
 
-Namespaces are specified as an array of entries inside the `namespaces` root field.
-The following parameters can be specified to set up namespaces:
+命名空间在 `namespaces` 根字段内以数组形式指定。
+可以指定以下参数来设置命名空间：
 
-* **`type`** *(string, REQUIRED)* - namespace type. The following namespace types SHOULD be supported:
-    * **`pid`** processes inside the container will only be able to see other processes inside the same container or inside the same pid namespace.
-    * **`network`** the container will have its own network stack.
-    * **`mount`** the container will have an isolated mount table.
-    * **`ipc`** processes inside the container will only be able to communicate to other processes inside the same container via system level IPC.
-    * **`uts`** the container will be able to have its own hostname and domain name.
-    * **`user`** the container will be able to remap user and group IDs from the host to local users and groups within the container.
-    * **`cgroup`** the container will have an isolated view of the cgroup hierarchy.
-    * **`time`** the container will be able to have its own clocks.
-* **`path`** *(string, OPTIONAL)* - namespace file.
-    This value MUST be an absolute path in the [runtime mount namespace](glossary.md#runtime-namespace).
-    The runtime MUST place the container process in the namespace associated with that `path`.
-    The runtime MUST [generate an error](runtime.md#errors) if `path` is not associated with a namespace of type `type`.
+* **`type`** *(string, REQUIRED)* - 命名空间类型。应该支持以下命名空间类型：
+    * **`pid`** 容器内的进程只能看到同一容器内或同一pid命名空间内的其他进程。
+    * **`network`** 容器将拥有自己的网络栈。
+    * **`mount`** 容器将拥有隔离的挂载表。
+    * **`ipc`** 容器内的进程只能通过系统级IPC与同一容器内的其他进程通信。
+    * **`uts`** 容器将能够拥有自己的主机名和域名。
+    * **`user`** 容器将能够将主机上的用户和组ID重新映射到容器内的本地用户和组。
+    * **`cgroup`** 容器将拥有cgroup层次结构的隔离视图。
+    * **`time`** 容器将能够拥有自己的时钟。
+* **`path`** *(string, OPTIONAL)* - 命名空间文件。
+    该值必须是[runtime挂载命名空间](glossary.md#runtime-namespace)中的绝对路径。
+    运行时必须将容器进程放在与该`path`关联的命名空间中。
+    如果`path`与`type`类型的命名空间不关联，运行时必须[生成错误](runtime.md#errors)。
 
-    If `path` is not specified, the runtime MUST create a new [container namespace](glossary.md#container-namespace) of type `type`.
+    如果未指定`path`，运行时必须创建类型为`type`的新[容器命名空间](glossary.md#container-namespace)。
 
-If a namespace type is not specified in the `namespaces` array, the container MUST inherit the [runtime namespace](glossary.md#runtime-namespace) of that type.
-If a `namespaces` field contains duplicated namespaces with same `type`, the runtime MUST [generate an error](runtime.md#errors).
+如果`namespaces`数组中未指定命名空间类型，容器必须继承该类型的[runtime命名空间](glossary.md#runtime-namespace)。
+如果`namespaces`字段包含具有相同`type`的重复命名空间，运行时必须[生成错误](runtime.md#errors)。
 
-### Example
+### 示例
 
 ```json
 "namespaces": [
@@ -78,21 +78,21 @@ If a `namespaces` field contains duplicated namespaces with same `type`, the run
 ]
 ```
 
-## <a name="configLinuxUserNamespaceMappings" />User namespace mappings
+## <a name="configLinuxUserNamespaceMappings" />用户命名空间映射
 
-**`uidMappings`** (array of objects, OPTIONAL) describes the user namespace uid mappings from the host to the container.
-**`gidMappings`** (array of objects, OPTIONAL) describes the user namespace gid mappings from the host to the container.
+**`uidMappings`** (对象数组，OPTIONAL) 描述了从主机到容器的用户命名空间uid映射。
+**`gidMappings`** (对象数组，OPTIONAL) 描述了从主机到容器的用户命名空间gid映射。
 
-Each entry has the following structure:
+每个条目具有以下结构：
 
-* **`containerID`** *(uint32, REQUIRED)* - is the starting uid/gid in the container.
-* **`hostID`** *(uint32, REQUIRED)* - is the starting uid/gid on the host to be mapped to *containerID*.
-* **`size`** *(uint32, REQUIRED)* - is the number of ids to be mapped.
+* **`containerID`** *(uint32, REQUIRED)* - 是容器中的起始uid/gid。
+* **`hostID`** *(uint32, REQUIRED)* - 是主机上要映射到*containerID*的起始uid/gid。
+* **`size`** *(uint32, REQUIRED)* - 是要映射的id数量。
 
-The runtime SHOULD NOT modify the ownership of referenced filesystems to realize the mapping.
-Note that the number of mapping entries MAY be limited by the [kernel][user-namespaces].
+运行时不应该修改引用文件系统的所有权来实现映射。
+注意，映射条目的数量可能受到[内核][user-namespaces]的限制。
 
-### Example
+### 示例
 
 ```json
 "uidMappings": [
@@ -111,46 +111,41 @@ Note that the number of mapping entries MAY be limited by the [kernel][user-name
 ]
 ```
 
-## <a name="configLinuxTimeOffset" />Offset for Time Namespace
+## <a name="configLinuxTimeOffset" />时间命名空间的偏移量
 
-**`timeOffsets`** (object, OPTIONAL) sets the offset for Time Namespace. For more information
-see the [time_namespaces][time_namespaces.7].
+**`timeOffsets`** (对象，OPTIONAL) 设置时间命名空间的偏移量。更多信息
+请参见 [time_namespaces][time_namespaces.7]。
 
-The name of the clock is the entry key.
-Entry values are objects with the following properties:
+时钟的名称是条目的键。
+条目值是具有以下属性的对象：
 
-* **`secs`** *(int64, OPTIONAL)* - is the offset of clock (in seconds) in the container.
-* **`nanosecs`** *(uint32, OPTIONAL)* - is the offset of clock (in nanoseconds) in the container.
+* **`secs`** *(int64, OPTIONAL)* - 是容器中时钟的偏移量（以秒为单位）。
+* **`nanosecs`** *(uint32, OPTIONAL)* - 是容器中时钟的偏移量（以纳秒为单位）。
 
-## <a name="configLinuxDevices" />Devices
+## <a name="configLinuxDevices" />设备
 
-**`devices`** (array of objects, OPTIONAL) lists devices that MUST be available in the container.
-The runtime MAY supply them however it likes (with [`mknod`][mknod.2], by bind mounting from the runtime mount namespace, using symlinks, etc.).
+**`devices`** (对象数组，OPTIONAL) 列出了容器中必须可用的设备。
+运行时可以以任何方式提供这些设备（通过[`mknod`][mknod.2]，从运行时挂载命名空间绑定挂载，使用符号链接等）。
 
-Each entry has the following structure:
+每个条目具有以下结构：
 
-* **`type`** *(string, REQUIRED)* - type of device: `c`, `b`, `u` or `p`.
-    More info in [mknod(1)][mknod.1].
-* **`path`** *(string, REQUIRED)* - full path to device inside container.
-    If a [file][] already exists at `path` that does not match the requested device, the runtime MUST generate an error.
-    The path MAY be anywhere in the container filesystem, notably outside of `/dev`.
-* **`major, minor`** *(int64, REQUIRED unless `type` is `p`)* - [major, minor numbers][devices] for the device.
-* **`fileMode`** *(uint32, OPTIONAL)* - file mode for the device.
-    You can also control access to devices [with cgroups](#configLinuxDeviceAllowedlist).
-* **`uid`** *(uint32, OPTIONAL)* - id of device owner in the [container namespace](glossary.md#container-namespace).
-* **`gid`** *(uint32, OPTIONAL)* - id of device group in the [container namespace](glossary.md#container-namespace).
+* **`type`** *(string, REQUIRED)* - 设备类型：`c`、`b`、`u`或`p`。
+    更多信息请参见 [mknod(1)][mknod.1]。
+* **`path`** *(string, REQUIRED)* - 容器内设备的完整路径。
+    如果`path`处已存在与请求的设备不匹配的[文件][]，运行时必须生成错误。
+    路径可以是容器文件系统中的任何位置，特别是在`/dev`之外。
+* **`major, minor`** *(int64, 除非`type`是`p`否则REQUIRED)* - 设备的[主设备号，次设备号][devices]。
+* **`fileMode`** *(uint32, OPTIONAL)* - 设备的文件模式。
+    您也可以通过cgroups[控制对设备的访问](#configLinuxDeviceAllowedlist)。
+* **`uid`** *(uint32, OPTIONAL)* - [容器命名空间](glossary.md#container-namespace)中设备所有者的id。
+* **`gid`** *(uint32, OPTIONAL)* - [容器命名空间](glossary.md#container-namespace)中设备组的id。
 
-The same `type`, `major` and `minor` SHOULD NOT be used for multiple devices.
+相同的`type`、`major`和`minor`不应该用于多个设备。
 
-Containers MAY NOT access any device node that is not either explicitly
-referenced in the **`devices`** array or listed as being part of the
-[default devices](#configLinuxDefaultDevices).
-Rationale: runtimes based on virtual machines need to be able to adjust the node
-devices, and accessing device nodes that were not adjusted could have undefined
-behaviour.
+容器可能无法访问任何未在**`devices`**数组中明确引用或未列为[默认设备](#configLinuxDefaultDevices)一部分的设备节点。
+理由：基于虚拟机的运行时需要能够调整节点设备，访问未调整的设备节点可能具有未定义的行为。
 
-
-### Example
+### 示例
 
 ```json
 "devices": [
@@ -175,9 +170,9 @@ behaviour.
 ]
 ```
 
-### <a name="configLinuxDefaultDevices" />Default Devices
+### <a name="configLinuxDefaultDevices" />默认设备
 
-In addition to any devices configured with this setting, the runtime MUST also supply:
+除了通过此设置配置的任何设备外，运行时还必须提供：
 
 * [`/dev/null`][null.4]
 * [`/dev/zero`][zero.4]
@@ -185,921 +180,76 @@ In addition to any devices configured with this setting, the runtime MUST also s
 * [`/dev/random`][random.4]
 * [`/dev/urandom`][random.4]
 * [`/dev/tty`][tty.4]
-* `/dev/console` is set up if [`terminal`](config.md#process) is enabled in the config by bind mounting the pseudoterminal pty to `/dev/console`.
-* [`/dev/ptmx`][pts.4].
-  A [bind-mount or symlink of the container's `/dev/pts/ptmx`][devpts].
-
-## <a name="configLinuxNetworkDevices" />Network Devices
-
-Linux network devices are entities that send and receive data packets. They are
-not represented as files in the `/dev` directory. Instead, they are represented
-by the [`net_device`][net_device] data structure in the Linux kernel. Network
-devices can belong to only one network namespace and use a set of operations
-distinct from regular file operations. Network devices can be categorized as
-**physical** or **virtual**:
-
-* **Physical network devices** correspond to hardware interfaces, such as
-    Ethernet cards (e.g., `eth0`, `enp0s3`). They are directly associated with
-    physical network hardware.
-* **Virtual network devices** are software-defined interfaces, such as loopback
-    devices (`lo`), virtual Ethernet pairs (`veth`), bridges (`br0`), VLANs, and
-    MACVLANs. They are created and managed by the kernel and do not correspond
-    to physical hardware.
-
-This schema focuses solely on moving existing network devices identified by name
-from the host network namespace into the container network namespace. It does
-not cover the complexities of network device creation or network configuration,
-such as IP address assignment, routing, and DNS setup.
-
-**`netDevices`** (object, OPTIONAL) - A set of network devices that MUST be made
-available in the container. The runtime is responsible for moving these devices;
-the underlying mechanism is implementation-defined.
-
-The name of the network device is the entry key. Entry values are objects with
-the following properties:
-
-* **`name`** *(string, OPTIONAL)* - the name of the network device inside the
-    container namespace. If not specified, the host name is used.
-
-The runtime MUST check if moving the network interface to the container
-namespace is possible. If a network device with the specified name already
-exists in the container namespace, the runtime MUST [generate an error](runtime.md#errors),
-unless the user has provided a template by appending
-`%d` to the new name. In that case, the runtime MUST allow the move, and the
-kernel will generate a unique name for the interface within the container's
-network namespace.
-
-The runtime MUST preserve existing network interface attributes, including all
-permanent IP addresses (IFA_F_PERMANENT flag) of any family with global scope
-(RT_SCOPE_UNIVERSE value) as defined in [`RFC 3549 Section 2.3.3.2`][rfc3549].
-This ensures that only addresses intended for persistent, external communication
-are transferred.
-
-The runtime MUST set the network device state to "up" after moving it to the
-network namespace to allow the container to send and receive network traffic
-through that device.
-
-### Namespace Lifecycle and Container Termination
-
-The runtime MUST NOT actively manage the interface's lifecycle and configuration
-*within* the container's network namespace. This is because network interfaces
-are inherently tied to the network namespace itself, and their lifecycle is
-therefore managed by the owner of the network namespace. Typically, this
-ownership and management are handled by higher-level container runtime
-orchestrators, rather than the processes running directly within the container.
-
-The runtime **MUST NOT** attempt to move the interface out of the namespace
-before deletion. This design decision is based on the following:
-
-* **Namespace Ownership:** Network interfaces are tied to the network namespace,
-    which may not always be directly managed by the runtime.
-* **Abrupt Termination:** Even when the runtime manages the namespace, it cannot
-    reliably participate in its deletion if the container's processes terminate
-    abruptly (e.g., due to a crash) or run until completion.
-
-During the network namespace deletion the kernel's built-in namespace cleanup
-mechanisms take over, as described in [network_namespaces(7)][net_namespaces.7]:
-"When a network namespace is freed (i.e., when the last process in the namespace
-terminates), its physical network devices are moved back to the initial network
-namespace." All the network namespace migratable physical network devices are
-moved to the default network namespace, while virtual devices (veth, macvlan,
-...) are destroyed.
-
-If users require custom handling of interface lifecycle during namespace
-deletion, they can utilize existing features within the namespace orchestrator
-or employ post-stop hooks.
-
-**Physical Interface Renaming and Systemd**
-
-When a physical interface is renamed within a container and the container's
-network namespace is later deleted, the kernel will move the interface back to
-the root namespace with its renamed name. In case of a name conflict in the root
-namespace, the kernel will rename it to `dev%d`. To ensure predictable interface
-names in the root namespace, users can utilize systemd's `udevd` and `networkd`
-rules. Refer to [systemd Predictable Network Interface Names][predictable-network-interfaces-names]
-for more information on configuring predictable names.
-
-### Example
-
-#### Moving a device with a renamed interface inside the container:
-
-```json
-"netDevices": {
-    "eth0" : {
-        "name": "container_eth0"
-    }
-}
-```
-
-## <a name="configLinuxControlGroups" />Control groups
-
-Also known as cgroups, they are used to restrict resource usage for a container and handle device access.
-cgroups provide controls (through controllers) to restrict cpu, memory, IO, pids, network and RDMA resources for the container.
-For more information, see the [kernel cgroups documentation][cgroup-v1].
-
-A runtime MAY, during a particular [container operation](runtime.md#operation),
-such as [create](runtime.md#create), [start](runtime.md#start), or
-[exec](runtime.md#exec), check if the container cgroup is fit for purpose,
-and MUST [generate an error](runtime.md#errors) if such a check fails.
-For example, a frozen cgroup or (for [create](runtime.md#create) operation)
-a non-empty cgroup. The reason for this is that accepting such configurations
-could cause container operation outcomes that users may not anticipate or
-understand, such as operation on one container inadvertently affecting other
-containers.
-
-### <a name="configLinuxCgroupsPath" />Cgroups Path
-
-**`cgroupsPath`** (string, OPTIONAL) path to the cgroups.
-It can be used to either control the cgroups hierarchy for containers or to run a new process in an existing container.
-
-The value of `cgroupsPath` MUST be either an absolute path or a relative path.
-
-* In the case of an absolute path (starting with `/`), the runtime MUST take the path to be relative to the cgroups mount point.
-* In the case of a relative path (not starting with `/`), the runtime MAY interpret the path relative to a runtime-determined location in the cgroups hierarchy.
-
-If the value is specified, the runtime MUST consistently attach to the same place in the cgroups hierarchy given the same value of `cgroupsPath`.
-If the value is not specified, the runtime MAY define the default cgroups path.
-Runtimes MAY consider certain `cgroupsPath` values to be invalid, and MUST generate an error if this is the case.
-
-Implementations of the Spec can choose to name cgroups in any manner.
-The Spec does not include naming schema for cgroups.
-The Spec does not support per-controller paths for the reasons discussed in the [cgroupv2 documentation][cgroup-v2].
-The cgroups will be created if they don't exist.
-
-You can configure a container's cgroups via the `resources` field of the Linux configuration.
-Do not specify `resources` unless limits have to be updated.
-For example, to run a new process in an existing container without updating limits, `resources` need not be specified.
-
-Runtimes MAY attach the container process to additional cgroup controllers beyond those necessary to fulfill the `resources` settings.
-
-### Cgroup ownership
-
-Runtimes MAY, according to the following rules, change (or cause to
-be changed) the owner of the container's cgroup to the host uid that
-maps to the value of `process.user.uid` in the [container
-namespace](glossary.md#container-namespace); that is, the user that
-will execute the container process.
-
-Runtimes SHOULD NOT change the ownership of container cgroups when
-cgroups v1 is in use.  Cgroup delegation is not secure in cgroups
-v1.
-
-A runtime SHOULD NOT change the ownership of a container cgroup
-unless it will also create a new cgroup namespace for the container.
-Typically this occurs when the `linux.namespaces` array contains an
-object with `type` equal to `"cgroup"` and `path` unset.
-
-Runtimes SHOULD change the cgroup ownership if and only if the
-cgroup filesystem is to be mounted read/write; that is, when the
-configuration's `mounts` array contains an object where:
-
-- The `source` field is equal to `"cgroup"`
-- The `destination` field is equal to `"/sys/fs/cgroup"`
-- The `options` field does not contain the value `"ro"`
-
-If the configuration does not specify such a mount, the runtime
-SHOULD NOT change the cgroup ownership.
-
-A runtime that changes the cgroup ownership SHOULD only change the
-ownership of the container's cgroup directory and files within that
-directory that are listed in `/sys/kernel/cgroup/delegate`.  See
-`cgroups(7)` for details about this file.  Note that not all files
-listed in `/sys/kernel/cgroup/delegate` necessarily exist in every
-cgroup.  Runtimes MUST NOT fail in this scenario, and SHOULD change
-the ownership of the listed files that do exist in the cgroup.
-
-If the `/sys/kernel/cgroup/delegate` file does not exist, the
-runtime MUST fall back to using the following list of files:
-
-```
-cgroup.procs
-cgroup.subtree_control
-cgroup.threads
-```
-
-The runtime SHOULD NOT change the ownership of any other files.
-Changing other files may allow the container to elevate its own
-resource limits or perform other unwanted behaviour.
-
-### Example
-
-```json
-"cgroupsPath": "/myRuntime/myContainer",
-"resources": {
-    "memory": {
-    "limit": 100000,
-    "reservation": 200000
-    },
-    "devices": [
-        {
-            "allow": false,
-            "access": "rwm"
-        }
-    ]
-}
-```
-
-### <a name="configLinuxDeviceAllowedlist" />Allowed Device list
-
-**`devices`** (array of objects, OPTIONAL) configures the [allowed device list][cgroup-v1-devices].
-The runtime MUST apply entries in the listed order.
-
-Each entry has the following structure:
-
-* **`allow`** *(boolean, REQUIRED)* - whether the entry is allowed or denied.
-* **`type`** *(string, OPTIONAL)* - type of device: `a` (all), `c` (char), or `b` (block).
-    Unset values mean "all", mapping to `a`.
-* **`major, minor`** *(int64, OPTIONAL)* - [major, minor numbers][devices] for the device.
-    Unset values mean "all", mapping to [`*` in the filesystem API][cgroup-v1-devices].
-* **`access`** *(string, OPTIONAL)* - cgroup permissions for device.
-    A composition of `r` (read), `w` (write), and `m` (mknod).
-
-#### Example
-
-```json
-"devices": [
-    {
-        "allow": false,
-        "access": "rwm"
-    },
-    {
-        "allow": true,
-        "type": "c",
-        "major": 10,
-        "minor": 229,
-        "access": "rw"
-    },
-    {
-        "allow": true,
-        "type": "b",
-        "major": 8,
-        "minor": 0,
-        "access": "r"
-    }
-]
-```
-
-### <a name="configLinuxMemory" />Memory
-
-**`memory`** (object, OPTIONAL) represents the cgroup subsystem `memory` and it's used to set limits on the container's memory usage.
-For more information, see the kernel cgroups documentation about [memory][cgroup-v1-memory].
-
-Values for memory specify the limit in bytes, or `-1` for unlimited memory.
-
-* **`limit`** *(int64, OPTIONAL)* - sets limit of memory usage
-* **`reservation`** *(int64, OPTIONAL)* - sets soft limit of memory usage
-* **`swap`** *(int64, OPTIONAL)* - sets limit of memory+Swap usage
-* **`kernel`** *(int64, OPTIONAL, NOT RECOMMENDED)* - sets hard limit for kernel memory
-* **`kernelTCP`** *(int64, OPTIONAL, NOT RECOMMENDED)* - sets hard limit for kernel TCP buffer memory
-
-The following properties do not specify memory limits, but are covered by the `memory` controller:
-
-* **`swappiness`** *(uint64, OPTIONAL)* - sets swappiness parameter of vmscan (See sysctl's vm.swappiness)
-    The values are from 0 to 100. Higher means more swappy.
-* **`disableOOMKiller`** *(bool, OPTIONAL)* - enables or disables the OOM killer.
-    If enabled (`false`), tasks that attempt to consume more memory than they are allowed are immediately killed by the OOM killer.
-    The OOM killer is enabled by default in every cgroup using the `memory` subsystem.
-    To disable it, specify a value of `true`.
-* **`useHierarchy`** *(bool, OPTIONAL)* - enables or disables hierarchical memory accounting.
-    If enabled (`true`), child cgroups will share the memory limits of this cgroup.
-* **`checkBeforeUpdate`** *(bool, OPTIONAL)* - enables container memory usage check before setting a new limit.
-    If enabled (`true`), runtime MAY check if a new memory limit is lower than the current usage, and MUST
-    reject the new limit. Practically, when cgroup v1 is used, the kernel rejects the limit lower than the
-    current usage, and when cgroup v2 is used, an OOM killer is invoked. This setting can be used on
-    cgroup v2 to mimic the cgroup v1 behavior.
-
-#### Example
-
-```json
-"memory": {
-    "limit": 536870912,
-    "reservation": 536870912,
-    "swap": 536870912,
-    "kernel": -1,
-    "kernelTCP": -1,
-    "swappiness": 0,
-    "disableOOMKiller": false
-}
-```
-
-### <a name="configLinuxCPU" />CPU
-
-**`cpu`** (object, OPTIONAL) represents the cgroup subsystems `cpu` and `cpusets`.
-For more information, see the kernel cgroups documentation about [cpusets][cgroup-v1-cpusets].
-
-The following parameters can be specified to set up the controller:
-
-* **`shares`** *(uint64, OPTIONAL)* - specifies a relative share of CPU time available to the tasks in a cgroup
-* **`quota`** *(int64, OPTIONAL)* - specifies the total amount of time in microseconds for which all tasks in a cgroup can run during one period (as defined by **`period`** below)
-    If specified with any (valid) positive value, it MUST be no smaller than `burst` (runtimes MAY generate an error).
-* **`burst`** *(uint64, OPTIONAL)* - specifies the maximum amount of accumulated time in microseconds for which all tasks in a cgroup can run additionally for burst during one period (as defined by **`period`** below)
-    If specified, this value MUST be no larger than any positive `quota` (runtimes MAY generate an error).
-* **`period`** *(uint64, OPTIONAL)* - specifies a period of time in microseconds for how regularly a cgroup's access to CPU resources should be reallocated (CFS scheduler only)
-* **`realtimeRuntime`** *(int64, OPTIONAL)* - specifies a period of time in microseconds for the longest continuous period in which the tasks in a cgroup have access to CPU resources
-* **`realtimePeriod`** *(uint64, OPTIONAL)* - same as **`period`** but applies to realtime scheduler only
-* **`cpus`** *(string, OPTIONAL)* - list of CPUs the container will run on. This is a comma-separated list, with dashes to represent ranges. For example, `0-3,7` represents CPUs 0,1,2,3, and 7.
-* **`mems`** *(string, OPTIONAL)* - list of memory nodes the container will run on. This is a comma-separated list, with dashes to represent ranges. For example, `0-3,7` represents memory nodes 0,1,2,3, and 7.
-* **`idle`** *(int64, OPTIONAL)* - cgroups are configured with minimum weight, 0: default behavior, 1: SCHED_IDLE.
-
-#### Example
-
-```json
-"cpu": {
-    "shares": 1024,
-    "quota": 1000000,
-    "burst": 1000000,
-    "period": 500000,
-    "realtimeRuntime": 950000,
-    "realtimePeriod": 1000000,
-    "cpus": "2-3",
-    "mems": "0-7",
-    "idle": 0
-}
-```
-
-### <a name="configLinuxBlockIO" />Block IO
-
-**`blockIO`** (object, OPTIONAL) represents the cgroup subsystem `blkio` which implements the block IO controller.
-For more information, see the kernel cgroups documentation about [blkio][cgroup-v1-blkio] of cgroup v1 or [io][cgroup-v2-io] of cgroup v2, .
-
-Note that I/O throttling settings in cgroup v1 apply only to Direct I/O due to kernel implementation constraints, while this limitation does not exist in cgroup v2.
-
-The following parameters can be specified to set up the controller:
-
-* **`weight`** *(uint16, OPTIONAL)* - specifies per-cgroup weight. This is default weight of the group on all devices until and unless overridden by per-device rules.
-* **`leafWeight`** *(uint16, OPTIONAL)* - equivalents of `weight` for the purpose of deciding how much weight tasks in the given cgroup has while competing with the cgroup's child cgroups.
-* **`weightDevice`** *(array of objects, OPTIONAL)* - an array of per-device bandwidth weights.
-    Each entry has the following structure:
-    * **`major, minor`** *(int64, REQUIRED)* - major, minor numbers for device.
-        For more information, see the [mknod(1)][mknod.1] man page.
-    * **`weight`** *(uint16, OPTIONAL)* - bandwidth weight for the device.
-    * **`leafWeight`** *(uint16, OPTIONAL)* - bandwidth weight for the device while competing with the cgroup's child cgroups, CFQ scheduler only
-
-    You MUST specify at least one of `weight` or `leafWeight` in a given entry, and MAY specify both.
-
-* **`throttleReadBpsDevice`**, **`throttleWriteBpsDevice`** *(array of objects, OPTIONAL)* - an array of per-device bandwidth rate limits.
-    Each entry has the following structure:
-    * **`major, minor`** *(int64, REQUIRED)* - major, minor numbers for device.
-        For more information, see the [mknod(1)][mknod.1] man page.
-    * **`rate`** *(uint64, REQUIRED)* - bandwidth rate limit in bytes per second for the device
-
-* **`throttleReadIOPSDevice`**, **`throttleWriteIOPSDevice`** *(array of objects, OPTIONAL)* - an array of per-device IO rate limits.
-    Each entry has the following structure:
-    * **`major, minor`** *(int64, REQUIRED)* - major, minor numbers for device.
-        For more information, see the [mknod(1)][mknod.1] man page.
-    * **`rate`** *(uint64, REQUIRED)* - IO rate limit for the device
-
-#### Example
-
-```json
-"blockIO": {
-    "weight": 10,
-    "leafWeight": 10,
-    "weightDevice": [
-        {
-            "major": 8,
-            "minor": 0,
-            "weight": 500,
-            "leafWeight": 300
-        },
-        {
-            "major": 8,
-            "minor": 16,
-            "weight": 500
-        }
-    ],
-    "throttleReadBpsDevice": [
-        {
-            "major": 8,
-            "minor": 0,
-            "rate": 600
-        }
-    ],
-    "throttleWriteIOPSDevice": [
-        {
-            "major": 8,
-            "minor": 16,
-            "rate": 300
-        }
-    ]
-}
-```
-
-### <a name="configLinuxHugePageLimits" />Huge page limits
-
-**`hugepageLimits`** (array of objects, OPTIONAL) represents the `hugetlb` controller which allows to limit the HugeTLB reservations (if supported) or usage (page fault).
-By default if supported by the kernel, `hugepageLimits` defines the hugepage sizes and limits for HugeTLB controller
-reservation accounting, which allows to limit the HugeTLB reservations per control group and enforces the controller
-limit at reservation time and at the fault of HugeTLB memory for which no reservation exists.
-Otherwise if not supported by the kernel, this should fallback to the page fault accounting, which allows users to limit
-the HugeTLB usage (page fault) per control group and enforces the limit during page fault.
-
-Note that reservation limits are superior to page fault limits, since reservation limits are enforced at reservation
-time (on mmap or shget), and never causes the application to get SIGBUS signal if the memory was reserved before hand.
-This allows for easier fallback to alternatives such as non-HugeTLB memory for example. In the case of page fault
-accounting, it's very hard to avoid processes getting SIGBUS since the sysadmin needs precisely know the HugeTLB usage
-of all the tasks in the system and make sure there is enough pages to satisfy all requests. Avoiding tasks getting
-SIGBUS on overcommited systems is practically impossible with page fault accounting.
-
-For more information, see the kernel cgroups documentation about [HugeTLB][cgroup-v1-hugetlb].
-
-Each entry has the following structure:
-
-* **`pageSize`** *(string, REQUIRED)* - hugepage size.
-    The value has the format `<size><unit-prefix>B` (64KB, 2MB, 1GB), and must match the `<hugepagesize>` of the
-    corresponding control file found in `/sys/fs/cgroup/hugetlb/hugetlb.<hugepagesize>.rsvd.limit_in_bytes` (if
-    hugetlb_cgroup reservation is supported) or `/sys/fs/cgroup/hugetlb/hugetlb.<hugepagesize>.limit_in_bytes` (if not
-    supported).
-    Values of `<unit-prefix>` are intended to be parsed using base 1024 ("1KB" = 1024, "1MB" = 1048576, etc).
-* **`limit`** *(uint64, REQUIRED)* - limit in bytes of *hugepagesize* HugeTLB reservations (if supported) or usage.
-
-#### Example
-
-```json
-"hugepageLimits": [
-    {
-        "pageSize": "2MB",
-        "limit": 209715200
-    },
-    {
-        "pageSize": "64KB",
-        "limit": 1000000
-    }
-]
-```
-
-### <a name="configLinuxNetwork" />Network
-
-**`network`** (object, OPTIONAL) represents the cgroup subsystems `net_cls` and `net_prio`.
-For more information, see the kernel cgroups documentations about [net\_cls cgroup][cgroup-v1-net-cls] and [net\_prio cgroup][cgroup-v1-net-prio].
-
-The following parameters can be specified to set up the controller:
-
-* **`classID`** *(uint32, OPTIONAL)* - is the network class identifier the cgroup's network packets will be tagged with
-* **`priorities`** *(array of objects, OPTIONAL)* - specifies a list of objects of the priorities assigned to traffic originating from processes in the group and egressing the system on various interfaces.
-    The following parameters can be specified per-priority:
-    * **`name`** *(string, REQUIRED)* - interface name in [runtime network namespace](glossary.md#runtime-namespace)
-    * **`priority`** *(uint32, REQUIRED)* - priority applied to the interface
-
-#### Example
-
-```json
-"network": {
-    "classID": 1048577,
-    "priorities": [
-        {
-            "name": "eth0",
-            "priority": 500
-        },
-        {
-            "name": "eth1",
-            "priority": 1000
-        }
-    ]
-}
-```
-
-### <a name="configLinuxPIDS" />PIDs
-
-**`pids`** (object, OPTIONAL) represents the cgroup subsystem `pids`.
-For more information, see the kernel cgroups documentation about [pids][cgroup-v1-pids].
-
-The following parameters can be specified to set up the controller:
-
-* **`limit`** *(int64, REQUIRED)* - specifies the maximum number of tasks in the cgroup
-
-#### Example
-
-```json
-"pids": {
-    "limit": 32771
-}
-```
-
-### <a name="configLinuxRDMA" />RDMA
-
-**`rdma`** (object, OPTIONAL) represents the cgroup subsystem `rdma`.
-For more information, see the kernel cgroups documentation about [rdma][cgroup-v1-rdma].
-
-The name of the device to limit is the entry key.
-Entry values are objects with the following properties:
-
-* **`hcaHandles`** *(uint32, OPTIONAL)* - specifies the maximum number of hca_handles in the cgroup
-* **`hcaObjects`** *(uint32, OPTIONAL)* - specifies the maximum number of hca_objects in the cgroup
-
-You MUST specify at least one of the `hcaHandles` or `hcaObjects` in a given entry, and MAY specify both.
-
-#### Example
-
-```json
-"rdma": {
-    "mlx5_1": {
-        "hcaHandles": 3,
-        "hcaObjects": 10000
-    },
-    "mlx4_0": {
-        "hcaObjects": 1000
-    },
-    "rxe3": {
-        "hcaObjects": 10000
-    }
-}
-```
-
-## <a name="configLinuxUnified" />Unified
-
-**`unified`** (object, OPTIONAL) allows cgroup v2 parameters to be to be set and modified for the container.
-
-Each key in the map refers to a file in the cgroup unified hierarchy.
-
-The OCI runtime MUST ensure that the needed cgroup controllers are enabled for the cgroup.
-
-Configuration unknown to the runtime MUST still be written to the relevant file.
-
-The runtime MUST generate an error when the configuration refers to a cgroup controller that is not present or that cannot be enabled.
-
-### Example
-
-```json
-"unified": {
-    "io.max": "259:0 rbps=2097152 wiops=120\n253:0 rbps=2097152 wiops=120",
-    "hugetlb.1GB.max": "1073741824"
-}
-```
-
-If a controller is enabled on the cgroup v2 hierarchy but the configuration is provided for the cgroup v1 equivalent controller, the runtime MAY attempt a conversion.
-
-If the conversion is not possible the runtime MUST generate an error.
-
-## <a name="configLinuxIntelRdt" />IntelRdt
-
-**`intelRdt`** (object, OPTIONAL) represents the [Intel Resource Director Technology][intel-rdt-cat-kernel-interface].
-If `intelRdt` is set, the runtime MUST write the container process ID to the `tasks` file in a proper sub-directory in a mounted `resctrl` pseudo-filesystem. That sub-directory name is specified by `closID` parameter.
-If no mounted `resctrl` pseudo-filesystem is available in the [runtime mount namespace](glossary.md#runtime-namespace), the runtime MUST [generate an error](runtime.md#errors).
-
-If `intelRdt` is not set, the runtime MUST NOT manipulate any `resctrl` pseudo-filesystems.
-
-The following parameters can be specified for the container:
-
-* **`closID`** *(string, OPTIONAL)* - specifies the identity for RDT Class of Service (CLOS).
-
-* **`l3CacheSchema`** *(string, OPTIONAL)* - specifies the schema for L3 cache id and capacity bitmask (CBM).
-    The value SHOULD start with `L3:` and SHOULD NOT contain newlines.
-* **`memBwSchema`** *(string, OPTIONAL)* - specifies the schema of memory bandwidth per L3 cache id.
-    The value MUST start with `MB:` and MUST NOT contain newlines.
-* **`schemata`** *(array of strings, OPTIONAL)* - specifies the schemata to be written to the `schemata` file in resctrlfs. Each element represents one line in the `schemata` file. The value MUST NOT contain newlines.
-
-The following rules on parameters MUST be applied:
-
-* If both `l3CacheSchema` and `memBwSchema` are set, runtimes MUST write the combined value to the `schemata` file in that sub-directory discussed in `closID`.
-
-* If `l3CacheSchema` contains a line beginning with `MB:`, the value written to `schemata` file MUST be the non-`MB:` line(s) from `l3CacheSchema` and the line from `memBWSchema`.
-
-* If either `l3CacheSchema` or `memBwSchema` is set, runtimes MUST write the value to the `schemata` file in the that sub-directory discussed in `closID`.
-
-* If `schemata` field is set, runtimes MUST write the value to the `schemata` file in the that sub-directory discussed in `closID`. If also `l3CacheSchema` or `memBwSchema` is set the value of `schemata` field must be written last, after the values from `l3CacheSchema` and `memBwSchema` has been written.
-
-* If none of `l3CacheSchema`, `memBwSchema` or `schemata` is set, runtimes MUST NOT write to `schemata` files in any `resctrl` pseudo-filesystems.
-
-* If `closID` is not set, runtimes MUST use the container ID from [`start`](runtime.md#start) and create the `<container-id>` directory.
-
-* If `closID` is set, `l3CacheSchema` and/or `memBwSchema` and/or `schemata` is set
-  * if `closID` directory in a mounted `resctrl` pseudo-filesystem doesn't exist, the runtimes MUST create it.
-  * if `closID` directory in a mounted `resctrl` pseudo-filesystem exists, runtimes MUST compare `l3CacheSchema` and/or `memBwSchema` value with `schemata` file, and [generate an error](runtime.md#errors) if doesn't match.
-
-* If `closID` is set, and none of `l3CacheSchema`, `memBwSchema` or `schemata` are set, runtime MUST check if corresponding pre-configured directory `closID` is present in mounted `resctrl`. If such pre-configured directory `closID` exists, runtime MUST assign container to this `closID` and [generate an error](runtime.md#errors) if directory does not exist.
-
-* **`enableCMT`** *(boolean, OPTIONAL)* - specifies if Intel RDT CMT should be enabled:
-    * CMT (Cache Monitoring Technology) supports monitoring of the last-level cache (LLC) occupancy
-      for the container.
-
-* **`enableMBM`** *(boolean, OPTIONAL)* - specifies if Intel RDT MBM should be enabled:
-    * MBM (Memory Bandwidth Monitoring) supports monitoring of total and local memory bandwidth
-      for the container.
-
-### Example
-
-Consider a two-socket machine with:
-
-- two L3 caches where the default CBM is 0x7ff (11 bits)
-- eight L2 caches where the default CBM is 0xFF (8 bits)
-- minimum memory bandwidth of 10% with a memory bandwidth granularity of 10%
-
-Tasks inside the container:
-
-- have access to the "upper" 7/11 of L3 cache on socket 0 and the "lower" 5/11 L3 cache on socket 1
-- have access to the "lower" 4/8 of L2 cache on socket 0 (socket 1 is left out from this example)
-- may use a maximum memory bandwidth of 20% on socket 0 and 70% on socket 1.
-
-```json
-"linux": {
-    "intelRdt": {
-        "closID": "guaranteed_group",
-        "schemata": [
-            "L3:0=7f0;1=1f",
-            "L2:0=f;1=f;2=f;3=f",
-            "MB:0=20;1=70"
-        ]
-    }
-}
-```
-
-## <a name="configLinuxSysctl" />Sysctl
-
-**`sysctl`** (object, OPTIONAL) allows kernel parameters to be modified at runtime for the container.
-For more information, see the [sysctl(8)][sysctl.8] man page.
-
-### Example
-
-```json
-"sysctl": {
-    "net.ipv4.ip_forward": "1",
-    "net.core.somaxconn": "256"
-}
-```
-
-## <a name="configLinuxSeccomp" />Seccomp
-
-Seccomp provides application sandboxing mechanism in the Linux kernel.
-Seccomp configuration allows one to configure actions to take for matched syscalls and furthermore also allows matching on values passed as arguments to syscalls.
-For more information about Seccomp, see [Seccomp][seccomp] kernel documentation.
-The actions, architectures, and operators are strings that match the definitions in seccomp.h from [libseccomp][] and are translated to corresponding values.
-
-**`seccomp`** (object, OPTIONAL)
-
-The following parameters can be specified to set up seccomp:
-
-* **`defaultAction`** *(string, REQUIRED)* - the default action for seccomp. Allowed values are the same as `syscalls[].action`.
-* **`defaultErrnoRet`** *(uint, OPTIONAL)* - the errno return code to use.
-    Some actions like `SCMP_ACT_ERRNO` and `SCMP_ACT_TRACE` allow to specify the errno code to return.
-    When the action doesn't support an errno, the runtime MUST print and error and fail.
-    The default is `EPERM`.
-* **`architectures`** *(array of strings, OPTIONAL)* - the architecture used for system calls.
-    A valid list of constants as of libseccomp v2.6.0 is shown below.
-
-    * `SCMP_ARCH_X86`
-    * `SCMP_ARCH_X86_64`
-    * `SCMP_ARCH_X32`
-    * `SCMP_ARCH_ARM`
-    * `SCMP_ARCH_AARCH64`
-    * `SCMP_ARCH_MIPS`
-    * `SCMP_ARCH_MIPS64`
-    * `SCMP_ARCH_MIPS64N32`
-    * `SCMP_ARCH_MIPSEL`
-    * `SCMP_ARCH_MIPSEL64`
-    * `SCMP_ARCH_MIPSEL64N32`
-    * `SCMP_ARCH_PPC`
-    * `SCMP_ARCH_PPC64`
-    * `SCMP_ARCH_PPC64LE`
-    * `SCMP_ARCH_S390`
-    * `SCMP_ARCH_S390X`
-    * `SCMP_ARCH_PARISC`
-    * `SCMP_ARCH_PARISC64`
-    * `SCMP_ARCH_RISCV64`
-    * `SCMP_ARCH_LOONGARCH64`
-    * `SCMP_ARCH_M68K`
-    * `SCMP_ARCH_SH`
-    * `SCMP_ARCH_SHEB`
-
-* **`flags`** *(array of strings, OPTIONAL)* - list of flags to use with seccomp(2).
-
-    A valid list of constants is shown below.
-
-    * `SECCOMP_FILTER_FLAG_TSYNC`
-    * `SECCOMP_FILTER_FLAG_LOG`
-    * `SECCOMP_FILTER_FLAG_SPEC_ALLOW`
-    * `SECCOMP_FILTER_FLAG_WAIT_KILLABLE_RECV`
-
-* **`listenerPath`** *(string, OPTIONAL)* - specifies the path of UNIX domain socket over which the runtime will send the [container process state](#containerprocessstate) data structure when the `SCMP_ACT_NOTIFY` action is used.
-    This socket MUST use `AF_UNIX` domain and `SOCK_STREAM` type.
-    The runtime MUST send exactly one [container process state](#containerprocessstate) per connection.
-    The connection MUST NOT be reused and it MUST be closed after sending a seccomp state.
-    If sending to this socket fails, the runtime MUST [generate an error](runtime.md#errors).
-    If the `SCMP_ACT_NOTIFY` action is not used this value is ignored.
-
-    The runtime sends the following file descriptors using `SCM_RIGHTS` and set their names in the `fds` array of the [container process state](#containerprocessstate):
-
-    * **`seccompFd`** (string, REQUIRED) is the seccomp file descriptor returned by the seccomp syscall.
-
-* **`listenerMetadata`** *(string, OPTIONAL)* - specifies an opaque data to pass to the seccomp agent.
-    This string will be sent as the `metadata` field in the [container process state](#containerprocessstate).
-    This field MUST NOT be set if `listenerPath` is not set.
-
-* **`syscalls`** *(array of objects, OPTIONAL)* - match a syscall in seccomp.
-    While this property is OPTIONAL, some values of `defaultAction` are not useful without `syscalls` entries.
-    For example, if `defaultAction` is `SCMP_ACT_KILL` and `syscalls` is empty or unset, the kernel will kill the container process on its first syscall.
-    Each entry has the following structure:
-
-    * **`names`** *(array of strings, REQUIRED)* - the names of the syscalls.
-        `names` MUST contain at least one entry.
-    * **`action`** *(string, REQUIRED)* - the action for seccomp rules.
-        A valid list of constants as of libseccomp v2.6.0 is shown below.
-
-        * `SCMP_ACT_KILL`
-        * `SCMP_ACT_KILL_PROCESS`
-        * `SCMP_ACT_KILL_THREAD`
-        * `SCMP_ACT_TRAP`
-        * `SCMP_ACT_ERRNO`
-        * `SCMP_ACT_TRACE`
-        * `SCMP_ACT_ALLOW`
-        * `SCMP_ACT_LOG`
-        * `SCMP_ACT_NOTIFY`
-
-    * **`errnoRet`** *(uint, OPTIONAL)* - the errno return code to use.
-        Some actions like `SCMP_ACT_ERRNO` and `SCMP_ACT_TRACE` allow to specify the errno code to return.
-        When the action doesn't support an errno, the runtime MUST print and error and fail.
-        The default is `EPERM`.
-
-    * **`args`** *(array of objects, OPTIONAL)* - the specific syscall in seccomp.
-        Each entry has the following structure:
-
-        * **`index`** *(uint, REQUIRED)* - the index for syscall arguments in seccomp.
-        * **`value`** *(uint64, REQUIRED)* - the value for syscall arguments in seccomp.
-        * **`valueTwo`** *(uint64, OPTIONAL)* - the value for syscall arguments in seccomp.
-        * **`op`** *(string, REQUIRED)* - the operator for syscall arguments in seccomp.
-            A valid list of constants as of libseccomp v2.6.0 is shown below.
-
-            * `SCMP_CMP_NE`
-            * `SCMP_CMP_LT`
-            * `SCMP_CMP_LE`
-            * `SCMP_CMP_EQ`
-            * `SCMP_CMP_GE`
-            * `SCMP_CMP_GT`
-            * `SCMP_CMP_MASKED_EQ`
-
-### Example
-
-```json
-"seccomp": {
-    "defaultAction": "SCMP_ACT_ALLOW",
-    "architectures": [
-        "SCMP_ARCH_X86",
-        "SCMP_ARCH_X32"
-    ],
-    "syscalls": [
-        {
-            "names": [
-                "getcwd",
-                "chmod"
-            ],
-            "action": "SCMP_ACT_ERRNO"
-        }
-    ]
-}
-```
-
-### <a name="containerprocessstate" />The Container Process State
-
-The container process state is a data structure passed via a UNIX socket.
-The container runtime MUST send the container process state over the UNIX socket as regular payload serialized in JSON and file descriptors MUST be sent using `SCM_RIGHTS`.
-The container runtime MAY use several `sendmsg(2)` calls to send the aforementioned data.
-If more than one `sendmsg(2)` is used, the file descriptors MUST be sent only in the first call.
-
-The container process state includes the following properties:
-
-* **`ociVersion`** (string, REQUIRED) is version of the Open Container Initiative Runtime Specification with which the container process state complies.
-* **`fds`** (array, OPTIONAL) is a string array containing the names of the file descriptors passed.
-    The index of the name in this array corresponds to index of the file descriptors in the `SCM_RIGHTS` array.
-* **`pid`** (int, REQUIRED) is the container process ID, as seen by the runtime.
-* **`metadata`** (string, OPTIONAL) opaque metadata.
-* **`state`** ([state](runtime.md#state), REQUIRED) is the state of the container.
-
-Example sending a single `seccompFd` file descriptor in the `SCM_RIGHTS` array:
-
-```json
-{
-    "ociVersion": "1.0.2",
-    "fds": [
-        "seccompFd"
-    ],
-    "pid": 4422,
-    "metadata": "MKNOD=/dev/null,/dev/net/tun;BPF_MAP_TYPES=hash,array",
-    "state": {
-        "ociVersion": "1.0.2",
-        "id": "oci-container1",
-        "status": "creating",
-        "pid": 4422,
-        "bundle": "/containers/redis",
-        "annotations": {
-            "myKey": "myValue"
-        }
-    }
-}
-```
-
-## <a name="configLinuxRootfsMountPropagation" />Rootfs Mount Propagation
-
-**`rootfsPropagation`** (string, OPTIONAL) sets the rootfs's mount propagation.
-Its value is either `shared`, `slave`, `private` or `unbindable`.
-It's worth noting that a peer group is defined as a group of VFS mounts that propagate events to each other.
-A nested container is defined as a container launched inside an existing container.
-
-* **`shared`**: the rootfs mount belongs to a new peer group.
-    This means that further mounts (e.g. nested containers) will also belong to that peer group and will propagate events to the rootfs.
-    Note this does not mean that it's shared with the host.
-* **`slave`**: the rootfs mount receives propagation events from the host (e.g. if something is mounted on the host it will also appear in the container) but not the other way around.
-* **`private`**: the rootfs mount doesn't receive mount propagation events from the host and further mounts in nested containers will be isolated from the host and from the rootfs (even if the nested container `rootfsPropagation` option is shared).
-* **`unbindable`**: the rootfs mount is a private mount that cannot be bind-mounted.
-
-The [Shared Subtrees][sharedsubtree] article in the kernel documentation has more information about mount propagation.
-
-### Example
-
-```json
-"rootfsPropagation": "slave",
-```
-
-## <a name="configLinuxMaskedPaths" />Masked Paths
-
-**`maskedPaths`** (array of strings, OPTIONAL) will mask over the provided paths inside the container so that they cannot be read.
-The values MUST be absolute paths in the [container namespace](glossary.md#container_namespace).
-
-### Example
-
-```json
-"maskedPaths": [
-    "/proc/kcore"
-]
-```
-
-## <a name="configLinuxReadonlyPaths" />Readonly Paths
-
-**`readonlyPaths`** (array of strings, OPTIONAL) will set the provided paths as readonly inside the container.
-The values MUST be absolute paths in the [container namespace](glossary.md#container-namespace).
-
-### Example
-
-```json
-"readonlyPaths": [
-    "/proc/sys"
-]
-```
-
-## <a name="configLinuxMountLabel" />Mount Label
-
-**`mountLabel`** (string, OPTIONAL) will set the Selinux context for the mounts in the container.
-
-### Example
-
-```json
-"mountLabel": "system_u:object_r:svirt_sandbox_file_t:s0:c715,c811"
-```
-
-## <a name="configLinuxPersonality" />Personality
-
-**`personality`** (object, OPTIONAL) sets the Linux execution personality. For more information
-see the [personality][personality.2] syscall documentation. As most of the options are
-obsolete and rarely used, and some reduce security, the currently supported set is a small
-subset of the available options.
-
-* **`domain`** *(string, REQUIRED)* - the execution domain.
-    The valid list of constants is shown below. `LINUX32` will set the `uname` system call to show
-    a 32 bit CPU type, such as `i686`.
-
-    * `LINUX`
-    * `LINUX32`
-
-* **`flags`** *(array of strings, OPTIONAL)* - the additional flags to apply.
-    Currently no flag values are supported.
-
-
-[cgroup-v1]: https://www.kernel.org/doc/Documentation/cgroup-v1/cgroups.txt
-[cgroup-v1-blkio]: https://www.kernel.org/doc/Documentation/cgroup-v1/blkio-controller.txt
-[cgroup-v1-cpusets]: https://www.kernel.org/doc/Documentation/cgroup-v1/cpusets.txt
-[cgroup-v1-devices]: https://www.kernel.org/doc/Documentation/cgroup-v1/devices.txt
-[cgroup-v1-hugetlb]: https://www.kernel.org/doc/Documentation/cgroup-v1/hugetlb.txt
-[cgroup-v1-memory]: https://www.kernel.org/doc/Documentation/cgroup-v1/memory.txt
-[cgroup-v1-net-cls]: https://www.kernel.org/doc/Documentation/cgroup-v1/net_cls.txt
-[cgroup-v1-net-prio]: https://www.kernel.org/doc/Documentation/cgroup-v1/net_prio.txt
-[cgroup-v1-pids]: https://www.kernel.org/doc/Documentation/cgroup-v1/pids.txt
-[cgroup-v1-rdma]: https://www.kernel.org/doc/Documentation/cgroup-v1/rdma.txt
-[cgroup-v2]: https://www.kernel.org/doc/Documentation/cgroup-v2.txt
-[cgroup-v2-io]: https://docs.kernel.org/admin-guide/cgroup-v2.html#io
-[devices]: https://www.kernel.org/doc/Documentation/admin-guide/devices.txt
-[devpts]: https://www.kernel.org/doc/Documentation/filesystems/devpts.txt
-[file]: https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap03.html#tag_03_164
-[libseccomp]: https://github.com/seccomp/libseccomp
-[proc]: https://www.kernel.org/doc/Documentation/filesystems/proc.txt
-[seccomp]: https://www.kernel.org/doc/Documentation/prctl/seccomp_filter.txt
-[sharedsubtree]: https://www.kernel.org/doc/Documentation/filesystems/sharedsubtree.txt
-[sysfs]: https://www.kernel.org/doc/Documentation/filesystems/sysfs.txt
-[tmpfs]: https://www.kernel.org/doc/Documentation/filesystems/tmpfs.txt
-
-[full.4]: https://man7.org/linux/man-pages/man4/full.4.html
-[mknod.1]: https://man7.org/linux/man-pages/man1/mknod.1.html
-[mknod.2]: https://man7.org/linux/man-pages/man2/mknod.2.html
+* 如果在配置中启用了[`terminal`](config.md#process)，则通过将伪终端pty绑定挂载到`/dev/console`来设置`/dev/console`。
+* [`/dev/ptmx`][pts.4]。
+  容器`/dev/pts/ptmx`的[绑定挂载或符号链接][devpts]。
+
+## <a name="configLinuxNetworkDevices" />网络设备
+
+Linux网络设备是发送和接收数据包的实体。它们
+不以文件形式存在于`/dev`目录中。相反，它们由
+Linux内核中的[`net_device`][net_device]数据结构表示。网络
+设备只能属于一个网络命名空间，并使用一组与常规文件操作不同的操作。
+网络设备可以分为**物理**或**虚拟**：
+
+* **物理网络设备**对应于硬件接口，如
+    以太网卡（例如，`eth0`、`enp0s3`）。它们直接与
+    物理网络硬件关联。
+* **虚拟网络设备**是软件定义的接口，如回环
+    设备（`lo`）、虚拟以太网对（`veth`）、网桥（`br0`）、VLAN和
+    MACVLAN。它们由内核创建和管理，不对应于
+    物理硬件。
+
+此架构仅关注将主机网络命名空间中按名称识别的现有网络设备
+移动到容器网络命名空间中。它不涵盖网络设备创建或网络配置的复杂性，
+如IP地址分配、路由和DNS设置。
+
+**`netDevices`** (对象，OPTIONAL) - 必须在容器中可用的一组网络设备。
+运行时负责移动这些设备；底层机制由实现定义。
+
+网络设备的名称是条目的键。条目值是具有
+以下属性的对象：
+
+* **`name`** *(string, OPTIONAL)* - 容器命名空间内网络设备的名称。
+    如果未指定，则使用主机名称。
+
+运行时必须检查将网络接口移动到容器
+命名空间是否可能。如果容器命名空间中已存在具有指定名称的网络设备，
+运行时必须[生成错误](runtime.md#errors)，除非用户通过在新名称后附加
+`%d`提供了模板。在这种情况下，运行时必须允许移动，并且
+内核将为容器网络命名空间内的接口生成唯一名称。
+
+运行时必须保留现有网络接口属性，包括所有
+具有全局作用域（RT_SCOPE_UNIVERSE值）的任何族的永久IP地址（IFA_F_PERMANENT标志），
+如[`RFC 3549 Section 2.3.3.2`][rfc3549]中定义。这确保只有用于持久外部通信的
+地址被转移。
+
+运行时必须在将网络设备移动到网络命名空间后将其状态设置为"up"，
+以允许容器通过该设备发送和接收网络流量。
+
+### 命名空间生命周期和容器终止
+
+运行时不得主动管理容器网络命名空间*内*的接口生命周期和配置。
+这是因为网络接口本质上与网络命名空间本身绑定，因此它们的生命周期由
+网络命名空间的所有者管理。通常，这种所有权和管理由更高级别的容器运行时
+编排器处理，而不是直接在容器内运行的进程。
+
+[proc]: https://www.kernel.org/doc/html/latest/filesystems/proc.html
+[sysfs]: https://www.kernel.org/doc/html/latest/filesystems/sysfs.html
+[devpts]: https://www.kernel.org/doc/html/latest/filesystems/devpts.html
+[tmpfs]: https://www.kernel.org/doc/html/latest/filesystems/tmpfs.html
 [namespaces.7_2]: https://man7.org/linux/man-pages/man7/namespaces.7.html
-[net_device]: https://docs.kernel.org/networking/netdevices.html
-[net_namespaces.7]: https://man7.org/linux/man-pages/man7/network_namespaces.7.html
-[predictable-network-interfaces-names]: https://systemd.io/PREDICTABLE_INTERFACE_NAMES
-[rfc3549]: https://www.ietf.org/rfc/rfc3549.txt
-[null.4]: https://man7.org/linux/man-pages/man4/null.4.html
-[personality.2]: https://man7.org/linux/man-pages/man2/personality.2.html
-[pts.4]: https://man7.org/linux/man-pages/man4/pts.4.html
-[random.4]: https://man7.org/linux/man-pages/man4/random.4.html
-[sysctl.8]: https://man7.org/linux/man-pages/man8/sysctl.8.html
-[tty.4]: https://man7.org/linux/man-pages/man4/tty.4.html
-[zero.4]: https://man7.org/linux/man-pages/man4/zero.4.html
-[user-namespaces]: https://man7.org/linux/man-pages/man7/user_namespaces.7.html
-[intel-rdt-cat-kernel-interface]: https://www.kernel.org/doc/Documentation/x86/intel_rdt_ui.txt
+[user-namespaces]: https://www.kernel.org/doc/html/latest/admin-guide/namespaces/compatibility-list.html
 [time_namespaces.7]: https://man7.org/linux/man-pages/man7/time_namespaces.7.html
+[mknod.2]: https://man7.org/linux/man-pages/man2/mknod.2.html
+[mknod.1]: https://man7.org/linux/man-pages/man1/mknod.1.html
+[devices]: https://www.kernel.org/doc/html/latest/admin-guide/devices.html
+[null.4]: https://man7.org/linux/man-pages/man4/null.4.html
+[zero.4]: https://man7.org/linux/man-pages/man4/zero.4.html
+[full.4]: https://man7.org/linux/man-pages/man4/full.4.html
+[random.4]: https://man7.org/linux/man-pages/man4/random.4.html
+[tty.4]: https://man7.org/linux/man-pages/man4/tty.4.html
+[pts.4]: https://man7.org/linux/man-pages/man4/pts.4.html
+[devpts]: https://www.kernel.org/doc/html/latest/filesystems/devpts.html
+[net_device]: https://www.kernel.org/doc/html/latest/networking/netdevices.html
+[rfc3549]: https://www.rfc-editor.org/rfc/rfc3549.html#section-2.3.3.2 

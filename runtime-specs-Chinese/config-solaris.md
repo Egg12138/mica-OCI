@@ -1,50 +1,50 @@
-# <a name="solarisApplicationContainerConfiguration" />Solaris Application Container Configuration
+# <a name="solarisApplicationContainerConfiguration" />Solaris 应用程序容器配置 (Solaris Application Container Configuration)
 
-Solaris application containers can be configured using the following properties, all of the below properties have mappings to properties specified under [zonecfg(1M)][zonecfg.1m_2] man page, except milestone.
+Solaris 应用程序容器可以使用以下属性进行配置，除了 milestone 之外，以下所有属性都映射到 [zonecfg(1M)][zonecfg.1m_2] 手册页中指定的属性。
 
-## <a name="configSolarisMilestone" />milestone
-The SMF(Service Management Facility) FMRI which should go to "online" state before we start the desired process within the container.
+## <a name="configSolarisMilestone" />milestone (milestone)
+在容器内启动所需进程之前应该进入"online"状态的 SMF(Service Management Facility) FMRI。
 
 **`milestone`** *(string, OPTIONAL)*
 
-### Example
+### 示例
 ```json
 "milestone": "svc:/milestone/container:default"
 ```
 
 ## <a name="configSolarisLimitpriv" />limitpriv
-The maximum set of privileges any process in this container can obtain.
-The property should consist of a comma-separated privilege set specification as described in [priv_str_to_set(3C)][priv-str-to-set.3c] man page for the respective release of Solaris.
+此容器中任何进程可以获得的最大权限集。
+该属性应该包含一个逗号分隔的权限集规范，如相应 Solaris 版本的 [priv_str_to_set(3C)][priv-str-to-set.3c] 手册页中所述。
 
 **`limitpriv`** *(string, OPTIONAL)*
 
-### Example
+### 示例
 ```json
 "limitpriv": "default"
 ```
 
 ## <a name="configSolarisMaxShmMemory" />maxShmMemory
-The maximum amount of shared memory allowed for this application container.
-A scale (K, M, G, T) can be applied to the value for each of these numbers (for example, 1M is one megabyte).
-Mapped to `max-shm-memory` in [zonecfg(1M)][zonecfg.1m_2] man page.
+允许此应用程序容器使用的最大共享内存量。
+可以为这些数字中的每一个应用一个比例（K、M、G、T）（例如，1M 表示一兆字节）。
+映射到 [zonecfg(1M)][zonecfg.1m_2] 手册页中的 `max-shm-memory`。
 
 **`maxShmMemory`** *(string, OPTIONAL)*
 
-### Example
+### 示例
 ```json
 "maxShmMemory": "512m"
 ```
 
 ## <a name="configSolarisCappedCpu" />cappedCPU
-Sets a limit on the amount of CPU time that can be used by a container.
-The unit used translates to the percentage of a single CPU that can be used by all user threads in a container, expressed as a fraction (for example, .75) or a mixed number (whole number and fraction, for example, 1.25).
-An ncpu value of 1 means 100% of a CPU, a value of 1.25 means 125%, .75 mean 75%, and so forth.
-When projects within a capped container have their own caps, the minimum value takes precedence.
-cappedCPU is mapped to `capped-cpu` in [zonecfg(1M)][zonecfg.1m_2] man page.
+设置容器可以使用的 CPU 时间量的限制。
+使用的单位转换为容器中所有用户线程可以使用的单个 CPU 的百分比，表示为分数（例如，.75）或混合数（整数和分数，例如，1.25）。
+ncpu 值为 1 表示 CPU 的 100%，值为 1.25 表示 125%，.75 表示 75%，依此类推。
+当有上限的容器内的项目有自己的上限时，最小值优先。
+cappedCPU 映射到 [zonecfg(1M)][zonecfg.1m_2] 手册页中的 `capped-cpu`。
 
 * **`ncpus`** *(string, OPTIONAL)*
 
-### Example
+### 示例
 ```json
 "cappedCPU": {
     "ncpus": "8"
@@ -52,14 +52,14 @@ cappedCPU is mapped to `capped-cpu` in [zonecfg(1M)][zonecfg.1m_2] man page.
 ```
 
 ## <a name="configSolarisCappedMemory" />cappedMemory
-The physical and swap caps on the memory that can be used by this application container.
-A scale (K, M, G, T) can be applied to the value for each of these numbers (for example, 1M is one megabyte).
-cappedMemory is mapped to `capped-memory` in [zonecfg(1M)][zonecfg.1m_2] man page.
+此应用程序容器可以使用的内存的物理和交换上限。
+可以为这些数字中的每一个应用一个比例（K、M、G、T）（例如，1M 表示一兆字节）。
+cappedMemory 映射到 [zonecfg(1M)][zonecfg.1m_2] 手册页中的 `capped-memory`。
 
 * **`physical`** *(string, OPTIONAL)*
 * **`swap`** *(string, OPTIONAL)*
 
-### Example
+### 示例
 ```json
 "cappedMemory": {
     "physical": "512m",
@@ -67,39 +67,39 @@ cappedMemory is mapped to `capped-memory` in [zonecfg(1M)][zonecfg.1m_2] man pag
 }
 ```
 
-## <a name="configSolarisNetwork" />Network
+## <a name="configSolarisNetwork" />网络
 
-### <a name="configSolarisAutomaticNetwork" />Automatic Network (anet)
-anet is specified as an array that is used to set up networking for Solaris application containers.
-The anet resource represents the automatic creation of a network resource for an application container.
-The zones administration daemon, zoneadmd, is the primary process for managing the container's virtual platform.
-One of the daemon's responsibilities is creation and teardown of the networks for the container.
-For more information on the daemon see the [zoneadmd(1M)][zoneadmd.1m] man page.
-When such a container is started, a temporary VNIC(Virtual NIC) is automatically created for the container.
-The VNIC is deleted when the container is torn down.
-The following properties can be used to set up automatic networks.
-For additional information on properties, check the [zonecfg(1M)][zonecfg.1m_2] man page for the respective release of Solaris.
+### <a name="configSolarisAutomaticNetwork" />自动网络 (anet)
+anet 被指定为一个数组，用于为 Solaris 应用程序容器设置网络。
+anet 资源表示自动为应用程序容器创建网络资源。
+区域管理守护进程 zoneadmd 是管理容器虚拟平台的主要进程。
+守护进程的职责之一是创建和拆除容器的网络。
+有关守护进程的更多信息，请参见 [zoneadmd(1M)][zoneadmd.1m] 手册页。
+当启动这样的容器时，会自动为容器创建一个临时的 VNIC（虚拟网卡）。
+当容器被拆除时，VNIC 会被删除。
+以下属性可用于设置自动网络。
+有关属性的其他信息，请查看相应 Solaris 版本的 [zonecfg(1M)][zonecfg.1m_2] 手册页。
 
-* **`linkname`** *(string, OPTIONAL)* Specify a name for the automatically created VNIC datalink.
-* **`lowerLink`** *(string, OPTIONAL)* Specify the link over which the VNIC will be created.
-Mapped to `lower-link` in the [zonecfg(1M)][zonecfg.1m_2] man page.
-* **`allowedAddress`** *(string, OPTIONAL)* The set of IP addresses that the container can use might be constrained by specifying the `allowedAddress` property.
-    If `allowedAddress` has not been specified, then they can use any IP address on the associated physical interface for the network resource.
-    Otherwise, when `allowedAddress` is specified, the container cannot use IP addresses that are not in the `allowedAddress` list for the physical address.
-    Mapped to `allowed-address` in the [zonecfg(1M)][zonecfg.1m_2] man page.
-* **`configureAllowedAddress`** *(string, OPTIONAL)* If `configureAllowedAddress` is set to true, the addresses specified by `allowedAddress` are automatically configured on the interface each time the container starts.
-    When it is set to false, the `allowedAddress` will not be configured on container start.
-    Mapped to `configure-allowed-address` in the [zonecfg(1M)][zonecfg.1m_2] man page.
-* **`defrouter`** *(string, OPTIONAL)* The value for the OPTIONAL default router.
-* **`macAddress`** *(string, OPTIONAL)* Set the VNIC's MAC addresses based on the specified value or keyword.
-    If not a keyword, it is interpreted as a unicast MAC address.
-    For a list of the supported keywords please refer to the [zonecfg(1M)][zonecfg.1m_2] man page of the respective Solaris release.
-    Mapped to `mac-address` in the [zonecfg(1M)][zonecfg.1m_2] man page.
-* **`linkProtection`** *(string, OPTIONAL)* Enables one or more types of link protection using comma-separated values.
-    See the protection property in dladm(8) for supported values in respective release of Solaris.
-    Mapped to `link-protection` in the [zonecfg(1M)][zonecfg.1m_2] man page.
+* **`linkname`** *(string, OPTIONAL)* 为自动创建的 VNIC 数据链路指定一个名称。
+* **`lowerLink`** *(string, OPTIONAL)* 指定将在其上创建 VNIC 的链路。
+映射到 [zonecfg(1M)][zonecfg.1m_2] 手册页中的 `lower-link`。
+* **`allowedAddress`** *(string, OPTIONAL)* 容器可以使用的 IP 地址集可能通过指定 `allowedAddress` 属性来限制。
+    如果未指定 `allowedAddress`，则它们可以使用网络资源关联的物理接口上的任何 IP 地址。
+    否则，当指定 `allowedAddress` 时，容器不能使用不在物理地址的 `allowedAddress` 列表中的 IP 地址。
+    映射到 [zonecfg(1M)][zonecfg.1m_2] 手册页中的 `allowed-address`。
+* **`configureAllowedAddress`** *(string, OPTIONAL)* 如果 `configureAllowedAddress` 设置为 true，则每次容器启动时都会自动在接口上配置 `allowedAddress` 指定的地址。
+    当它设置为 false 时，`allowedAddress` 将不会在容器启动时配置。
+    映射到 [zonecfg(1M)][zonecfg.1m_2] 手册页中的 `configure-allowed-address`。
+* **`defrouter`** *(string, OPTIONAL)* OPTIONAL 默认路由器的值。
+* **`macAddress`** *(string, OPTIONAL)* 根据指定的值或关键字设置 VNIC 的 MAC 地址。
+    如果不是关键字，则将其解释为单播 MAC 地址。
+    有关支持的关键字列表，请参阅相应 Solaris 版本的 [zonecfg(1M)][zonecfg.1m_2] 手册页。
+    映射到 [zonecfg(1M)][zonecfg.1m_2] 手册页中的 `mac-address`。
+* **`linkProtection`** *(string, OPTIONAL)* 使用逗号分隔的值启用一种或多种类型的链路保护。
+    有关相应 Solaris 版本中支持的值，请参见 dladm(8) 中的保护属性。
+    映射到 [zonecfg(1M)][zonecfg.1m_2] 手册页中的 `link-protection`。
 
-#### Example
+#### 示例
 ```json
 "anet": [
     {
@@ -114,7 +114,6 @@ Mapped to `lower-link` in the [zonecfg(1M)][zonecfg.1m_2] man page.
 ]
 ```
 
-
 [priv-str-to-set.3c]: https://docs.oracle.com/cd/E86824_01/html/E54766/priv-str-to-set-3c.html
 [zoneadmd.1m]: https://docs.oracle.com/cd/E86824_01/html/E54764/zoneadmd-1m.html
-[zonecfg.1m_2]: https://docs.oracle.com/cd/E86824_01/html/E54764/zonecfg-1m.html
+[zonecfg.1m_2]: https://docs.oracle.com/cd/E86824_01/html/E54764/zonecfg-1m.html 
