@@ -7,7 +7,8 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/opencontainers/runc/rmica/commands"
+	"github.com/Egg12138/mica-OCI/rmica/commands"
+	"github.com/Egg12138/mica-OCI/rmica/constants"
 	"github.com/urfave/cli"
 )
 
@@ -19,15 +20,7 @@ var version string
 var extraVersion = ""
 var gitCommit = ""
 
-const (
-	runtimeName = "rmica"
-	specConfig = "config.json"
-	usage      = `Simple Pseudo-Container Runtime
 
-A simple drop-in replacement for runc that implements basic container lifecycle management APIs
-but does not actually handling any containers following the OCI specification.
-`
-)
 
 func printVersion(c *cli.Context) {
 	w := c.App.Writer
@@ -40,8 +33,8 @@ func printVersion(c *cli.Context) {
 
 func main() {
 	app := cli.NewApp()
-	app.Name = "rmica"
-	app.Usage = usage
+	app.Name = constants.RuntimeName
+	app.Usage = constants.Usage
 	app.Version = strings.TrimSpace(version) + extraVersion
 
 	cli.VersionPrinter = printVersion
@@ -49,7 +42,7 @@ func main() {
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "root",
-			Value: "/run/rmica",
+			Value: constants.Root,
 			Usage: "root directory for storage of container state",
 		},
 		cli.BoolFlag{
@@ -83,6 +76,7 @@ func main() {
 		commands.DeleteCommand,
 		commands.ListCommand,
 		commands.StateCommand,
+		commands.SpecCommand,
 	}
 
 	app.Before = func(context *cli.Context) error {

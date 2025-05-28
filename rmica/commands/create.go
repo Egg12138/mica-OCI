@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/Egg12138/mica-OCI/rmica/utils"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/urfave/cli"
 )
@@ -33,7 +34,7 @@ filesystem.`,
 		},
 	},
 	Action: func(context *cli.Context) error {
-		if err := checkArgs(context, 1, exactArgs); err != nil {
+		if err := utils.CheckArgs(context, 1, utils.ExactArgs); err != nil {
 			return err
 		}
 
@@ -41,13 +42,13 @@ filesystem.`,
 		id := context.Args().First()
 
 		// Load the spec
-		spec, err := setupSpec(context)
+		spec, err := utils.SetupSpec(context)
 		if err != nil {
 			return fmt.Errorf("failed to load spec: %w", err)
 		}
 
 		// Create container directory
-		root := getRootDir(context)
+		root := utils.GetRootDir(context)
 		containerDir := filepath.Join(root, id)
 		if err := os.MkdirAll(containerDir, 0o700); err != nil {
 			return fmt.Errorf("failed to create container directory: %w", err)
@@ -64,13 +65,13 @@ filesystem.`,
 
 		// Write state file
 		stateFile := filepath.Join(containerDir, "state.json")
-		if err := writeJSON(stateFile, state); err != nil {
+		if err := utils.WriteJSON(stateFile, state); err != nil {
 			return fmt.Errorf("failed to write state file: %w", err)
 		}
 
 		// Create PID file if specified
 		if pidFile := context.String("pid-file"); pidFile != "" {
-			if err := createPidFile(pidFile, os.Getpid()); err != nil {
+			if err := utils.CreatePidFile(pidFile, os.Getpid()); err != nil {
 				return fmt.Errorf("failed to create pid file: %w", err)
 			}
 		}

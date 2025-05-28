@@ -8,6 +8,8 @@ import (
 
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/urfave/cli"
+
+	"github.com/Egg12138/mica-OCI/rmica/utils"
 )
 
 var StateCommand = cli.Command{
@@ -18,7 +20,7 @@ var StateCommand = cli.Command{
 Where "<container-id>" is the name for the instance of the container to query.`,
 	Description: `The state command outputs the current state of a container.`,
 	Action: func(context *cli.Context) error {
-		if err := checkArgs(context, 1, exactArgs); err != nil {
+		if err := utils.CheckArgs(context, 1, utils.ExactArgs); err != nil {
 			return err
 		}
 
@@ -26,7 +28,7 @@ Where "<container-id>" is the name for the instance of the container to query.`,
 		id := context.Args().First()
 
 		// Get container directory
-		root := getRootDir(context)
+		root := utils.GetRootDir(context)
 		containerDir := filepath.Join(root, id)
 
 		// Check if container exists

@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 
 	"github.com/urfave/cli"
+
+	"github.com/Egg12138/mica-OCI/rmica/utils"
 )
 
 var DeleteCommand = cli.Command{
@@ -17,7 +19,7 @@ Where "<container-id>" is the name for the instance of the container to be delet
 	Description: `The delete command deletes any resources held by the container. The container
 must be stopped before it can be deleted.`,
 	Action: func(context *cli.Context) error {
-		if err := checkArgs(context, 1, exactArgs); err != nil {
+		if err := utils.CheckArgs(context, 1, utils.ExactArgs); err != nil {
 			return err
 		}
 
@@ -25,7 +27,7 @@ must be stopped before it can be deleted.`,
 		id := context.Args().First()
 
 		// Get container directory
-		root := getRootDir(context)
+		root := utils.GetRootDir(context)
 		containerDir := filepath.Join(root, id)
 
 		// Check if container exists

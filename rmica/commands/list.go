@@ -8,6 +8,8 @@ import (
 
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/urfave/cli"
+
+	"github.com/Egg12138/mica-OCI/rmica/utils"
 )
 
 var ListCommand = cli.Command{
@@ -16,7 +18,7 @@ var ListCommand = cli.Command{
 	Description: `The list command lists all containers.`,
 	Action: func(context *cli.Context) error {
 		// Get root directory
-		root := getRootDir(context)
+		root := utils.GetRootDir(context)
 
 		// Read container directories
 		entries, err := os.ReadDir(root)

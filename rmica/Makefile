@@ -59,13 +59,13 @@ build:
 	mkdir -p $(BINDIR)
 	$(GO) build -o $(BINARY_PATH)
 
-run: build
+$(BINNAME): build
 	$(BINARY_PATH)
 
 clean:
 	rm -f $(BINARY_PATH)
 
-test: build
+run: build
 	$(DCKR) run $(RUN_OPTS) --name $(CNTR_NAME) $(IMG)
 
 delete_all:
