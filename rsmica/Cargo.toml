@@ -1,0 +1,12 @@
+[package]
+name = "rsmica"
+version = "0.1.0"
+edition = "2024"
+
+
+[dependencies.clap]
+version = "4.1.6"
+default-features = false
+features = ["std", "suggestions", "derive", "cargo", "help", "usage", "error-context"]
+
+[dependencies]
