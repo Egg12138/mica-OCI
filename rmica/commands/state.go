@@ -9,6 +9,7 @@ import (
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/urfave/cli"
 
+	"github.com/Egg12138/mica-OCI/rmica/logger"
 	"github.com/Egg12138/mica-OCI/rmica/utils"
 )
 
@@ -50,12 +51,14 @@ Where "<container-id>" is the name for the instance of the container to query.`,
 		}
 
 		// Print state information
-		fmt.Printf("ID: %s\n", state.ID)
-		fmt.Printf("Status: %s\n", state.Status)
-		fmt.Printf("Bundle: %s\n", state.Bundle)
-		if state.Pid != 0 {
-			fmt.Printf("Pid: %d\n", state.Pid)
-		}
+		// fmt.Printf("ID: %s\n", state.ID)
+		// fmt.Printf("Status: %s\n", state.Status)
+		// fmt.Printf("Bundle: %s\n", state.Bundle)
+		// fmt.Printf("Pid: %d\n", state.Pid)
+		logger.Infof("ID: %s", state.ID)
+		logger.Infof("Status: %s", state.Status)
+		logger.Infof("Bundle: %s", state.Bundle)
+		logger.Infof("Pid: %d", state.Pid)
 
 		return nil
 	},

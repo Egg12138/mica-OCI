@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/Egg12138/mica-OCI/rmica/constants"
+	pseudo_container "github.com/Egg12138/mica-OCI/rmica/pseudo-container"
 	"github.com/Egg12138/mica-OCI/rmica/utils"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/urfave/cli"
@@ -19,7 +21,7 @@ Where "<container-id>" is your name for the instance of the container that you
 are starting. The name you provide for the container instance must be unique on
 your host.`,
 	Description: `The create command creates an instance of a container for a bundle. The bundle
-is a directory with a specification file named "config.json" and a root
+is a directory with a specification file named "` + constants.SpecConfig + `" and a root
 filesystem.`,
 	Flags: []cli.Flag{
 		cli.StringFlag{
@@ -38,7 +40,6 @@ filesystem.`,
 			return err
 		}
 
-		// Get container ID from arguments
 		id := context.Args().First()
 
 		// Load the spec
@@ -67,6 +68,11 @@ filesystem.`,
 		stateFile := filepath.Join(containerDir, "state.json")
 		if err := utils.WriteJSON(stateFile, state); err != nil {
 			return fmt.Errorf("failed to write state file: %w", err)
+		}
+
+		// Verify container instance can be loaded
+		if _, err := pseudo_container.Load(root, id); err != nil {
+			return fmt.Errorf("failed to verify container instance: %w", err)
 		}
 
 		// Create PID file if specified

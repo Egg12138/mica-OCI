@@ -9,4 +9,6 @@ A simple drop-in replacement for runc that implements basic container lifecycle 
 but does not actually handling any containers following the OCI specification.
 `
   Root = "/run/rmica"
+	DefaultMicaSocket = "/var/run/micad.sock"
+	SysVLogPath = "/var/log/rmica"
 )

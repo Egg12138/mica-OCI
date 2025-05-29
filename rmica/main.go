@@ -9,6 +9,8 @@ import (
 
 	"github.com/Egg12138/mica-OCI/rmica/commands"
 	"github.com/Egg12138/mica-OCI/rmica/constants"
+	"github.com/Egg12138/mica-OCI/rmica/logger"
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 )
 
@@ -16,7 +18,6 @@ import (
 //
 //go:embed VERSION
 var version string
-
 var extraVersion = ""
 var gitCommit = ""
 
@@ -71,12 +72,16 @@ func main() {
 	}
 
 	app.Commands = []cli.Command{
+		// Required by OCI specifications
 		commands.CreateCommand,
-		commands.RunCommand,
+		commands.StartCommand,
 		commands.DeleteCommand,
 		commands.ListCommand,
 		commands.StateCommand,
+		// Common commands
+		commands.RunCommand,
 		commands.SpecCommand,
+		// Extenstions
 	}
 
 	app.Before = func(context *cli.Context) error {
@@ -84,12 +89,13 @@ func main() {
 			return err
 		}
 
-		if context.Bool("debug") {
-			fmt.Println("Debug mode enabled")
-		}
 
 		if err := configLogrus(context); err != nil {
 			return err
+		}
+
+		if context.Bool("debug") {
+			logrus.Debug("Debug mode enabled")
 		}
 
 		return nil
@@ -97,7 +103,8 @@ func main() {
 
 	cli.ErrWriter = &FatalWriter{cli.ErrWriter}
 	if err := app.Run(os.Args); err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		// fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		logger.Errorf("error: %v", err)
 		os.Exit(1)
 	}
 } 

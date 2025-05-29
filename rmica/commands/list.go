@@ -9,6 +9,7 @@ import (
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/urfave/cli"
 
+	"github.com/Egg12138/mica-OCI/rmica/logger"
 	"github.com/Egg12138/mica-OCI/rmica/utils"
 )
 
@@ -39,22 +40,22 @@ var ListCommand = cli.Command{
 			stateFile := filepath.Join(root, entry.Name(), "state.json")
 			f, err := os.Open(stateFile)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "failed to read state file for container %s: %v\n", entry.Name(), err)
+				logger.Errorf("failed to read state file for container %s: %v", entry.Name(), err)
 				continue
 			}
 
 			var state specs.State
 			if err := json.NewDecoder(f).Decode(&state); err != nil {
 				f.Close()
-				fmt.Fprintf(os.Stderr, "failed to decode state file for container %s: %v\n", entry.Name(), err)
+				logger.Errorf("failed to decode state file for container %s: %v", entry.Name(), err)
 				continue
 			}
 			f.Close()
 
 			// Print container information
-			fmt.Printf("ID: %s\n", state.ID)
-			fmt.Printf("Status: %s\n", state.Status)
-			fmt.Printf("Bundle: %s\n", state.Bundle)
+			logger.Infof("ID: %s", state.ID)
+			logger.Infof("Status: %s", state.Status)
+			logger.Infof("Bundle: %s", state.Bundle)
 			fmt.Println()
 		}
 

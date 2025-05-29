@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/Egg12138/mica-OCI/rmica/constants"
+	pseudo_container "github.com/Egg12138/mica-OCI/rmica/pseudo-container"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/urfave/cli"
 )
@@ -79,15 +80,15 @@ func SetupSpec(context *cli.Context) (*specs.Spec, error) {
 			return nil, err
 		}
 	}
-	spec, err := loadSpec(constants.SpecConfig)
+	spec, err := LoadSpec(constants.SpecConfig)
 	if err != nil {
 		return nil, err
 	}
 	return spec, nil
 }
 
-// loadSpec loads the specification from the provided path.
-func loadSpec(cPath string) (spec *specs.Spec, err error) {
+// LoadSpec loads the specification from the provided path.
+func LoadSpec(cPath string) (spec *specs.Spec, err error) {
 	cf, err := os.Open(cPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -110,4 +111,27 @@ func loadSpec(cPath string) (spec *specs.Spec, err error) {
 // TODO: migrate to utils_mcs
 func validateTaskSpec(spec *specs.Process) error {
 	return nil
+}
+
+// alway consider the instance as a `container`
+func GetContainer(context *cli.Context) (*pseudo_container.Container, error) {
+	id := context.Args().First()
+	if id == "" {
+		return nil, errEmptyID
+	}
+	root := context.GlobalString("root")
+	return pseudo_container.Load(root, id)
+}
+
+func getDefaultImagePath() string {
+	cwd, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+	return filepath.Join(cwd, "checkpoint")
+}
+
+// NOTICE: consider the tty handler of mica
+func SetupIO() (*tty, error) {
+	return nil, nil
 }

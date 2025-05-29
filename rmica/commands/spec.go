@@ -11,6 +11,18 @@ import (
 	"github.com/Egg12138/mica-OCI/rmica/utils"
 )
 
+// Required fields:
+// {
+//     "ociVersion": "0.2.0",
+//     "id": "oci-container1",
+//     "status": "running",
+//     "pid": 4422,
+//     "bundle": "/containers/redis",
+//     "annotations": {
+//         "myKey": "myValue"
+//     }
+// }
+
 const specConfig = "config.json"
 
 func SpecAction(context *cli.Context) error {
