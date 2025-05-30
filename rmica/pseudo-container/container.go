@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Egg12138/mica-OCI/rmica/logger"
+	"rmica/logger"
 
 	"github.com/opencontainers/runtime-spec/specs-go"
 )
@@ -13,7 +13,7 @@ import (
 // ==================== Type Definitions ====================
 
 type Container struct {
-	ID      string
+	id      string
 	Root    string
 	// Use specs-go::Spec, State to represent, following OCI-spec
 	Spec    *specs.Spec
@@ -23,11 +23,14 @@ type Container struct {
 	initPid int
 }
 
-// ==================== Container Creation and Loading ====================
+// Id returns the container ID
+func (c *Container) Id() string {
+	return c.id
+}
 
 func New(root, id string, spec *specs.Spec) (*Container, error) {
 	return &Container{
-		ID:   id,
+		id:   id,
 		Root: root,
 		Spec: spec,
 		Config: spec,
@@ -35,7 +38,6 @@ func New(root, id string, spec *specs.Spec) (*Container, error) {
 	}, nil
 }
 
-// Load loads an existing container
 func Load(root, id string) (*Container, error) {
 	containerDir := filepath.Join(root, id)
 	if _, err := os.Stat(containerDir); err != nil {
@@ -43,7 +45,7 @@ func Load(root, id string) (*Container, error) {
 	}
 
 	return &Container{
-		ID:   id,
+		id:   id,
 		Root: root,
 		state: &StoppedState{},
 	}, nil
@@ -54,14 +56,14 @@ func Load(root, id string) (*Container, error) {
 func (c *Container) Init() error {
 	// Create container directory 
 	// e.g.: /run/containerd/io.containerd.runtime.task.v2/moby/<id>
-	containerDir := filepath.Join(c.Root, c.ID)
+	containerDir := filepath.Join(c.Root, c.Id())
 	if err := os.MkdirAll(containerDir, 0o700); err != nil {
 		return fmt.Errorf("failed to create container directory: %w", err)
 	}
 
 	c.State = &specs.State{
 		Version:     c.Spec.Version,
-		ID:          c.ID,
+		ID:          c.Id(),
 		Status:      specs.StateCreating,
 		Bundle:      c.Root,
 		Annotations: c.Spec.Annotations,

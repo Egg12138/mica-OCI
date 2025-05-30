@@ -7,11 +7,12 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/Egg12138/mica-OCI/rmica/commands"
-	"github.com/Egg12138/mica-OCI/rmica/constants"
-	"github.com/Egg12138/mica-OCI/rmica/logger"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
+
+	"rmica/commands"
+	"rmica/constants"
+	"rmica/logger"
 )
 
 // version is set from the contents of VERSION file.
@@ -20,8 +21,6 @@ import (
 var version string
 var extraVersion = ""
 var gitCommit = ""
-
-
 
 func printVersion(c *cli.Context) {
 	w := c.App.Writer
@@ -88,7 +87,6 @@ func main() {
 		if err := reviseRootDir(context); err != nil {
 			return err
 		}
-
 
 		if err := configLogrus(context); err != nil {
 			return err

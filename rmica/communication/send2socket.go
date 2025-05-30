@@ -7,8 +7,8 @@ import (
 	"os"
 	"syscall"
 
-	"github.com/Egg12138/mica-OCI/rmica/constants"
-	"github.com/Egg12138/mica-OCI/rmica/logger"
+	"rmica/constants"
+	"rmica/logger"
 )
 
 func Send2mica(data string) string {

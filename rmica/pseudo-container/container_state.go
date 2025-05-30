@@ -6,8 +6,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Egg12138/mica-OCI/rmica/communication"
-	"github.com/Egg12138/mica-OCI/rmica/logger"
+	"rmica/communication"
+	"rmica/logger"
+
 	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
@@ -138,6 +139,7 @@ func (c *CreatedState) transition(to ContainerState) error {
 	switch to.(type) {
 	case *RunningState, *PausedState, *StoppedState:
 		c.c.state = to
+		logger.Infof("[%s] %s -> %s", c.c.Id(), c.status(), to.status())
 		return nil
 	case *CreatedState:
 		return nil
@@ -180,8 +182,11 @@ func destroy(c *Container) error {
 	if res != "" {
 		// TODO: handle response
 	}
-	if err := os.RemoveAll(filepath.Join(c.Root, c.ID)); err != nil {
-		return fmt.Errorf("unable to remove container directory: %w", err)
+
+	// Remove container directory
+	containerDir := filepath.Join(c.Root, c.Id())
+	if err := os.RemoveAll(containerDir); err != nil {
+		return fmt.Errorf("failed to remove container directory: %w", err)
 	}
 	c.state = &StoppedState{c: c}
 	return nil

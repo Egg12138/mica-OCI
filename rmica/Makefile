@@ -23,9 +23,6 @@ endif
 
 # RUN_OPTS depends on R
 RUN_OPTS ?= --runtime=$(R)
-ifeq ($(M),it)
-RUN_OPTS := $(RUN_OPTS) -it
-endif
 
 ifeq ($(K),)
 RUN_OPTS := $(RUN_OPTS) --rm
@@ -66,7 +63,13 @@ clean:
 	rm -f $(BINARY_PATH)
 
 run: build
+ifeq ($(M),it)
+RUN_OPTS := $(RUN_OPTS) -it
+endif
 	$(DCKR) run $(RUN_OPTS) --name $(CNTR_NAME) $(IMG)
+
+create: build
+	$(DCKR) create $(RUN_OPTS) --name $(CNTR_NAME) $(IMG)
 
 delete_all:
 	@echo "removing $(IMG) container instances"

@@ -9,8 +9,8 @@ import (
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/urfave/cli"
 
-	"github.com/Egg12138/mica-OCI/rmica/logger"
-	"github.com/Egg12138/mica-OCI/rmica/utils"
+	"rmica/logger"
+	"rmica/utils"
 )
 
 var ListCommand = cli.Command{

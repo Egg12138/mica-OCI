@@ -8,8 +8,9 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/Egg12138/mica-OCI/rmica/constants"
-	pseudo_container "github.com/Egg12138/mica-OCI/rmica/pseudo-container"
+	"rmica/constants"
+	pseudo_container "rmica/pseudo-container"
+
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/urfave/cli"
 )

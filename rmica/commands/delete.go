@@ -7,7 +7,7 @@ import (
 
 	"github.com/urfave/cli"
 
-	"github.com/Egg12138/mica-OCI/rmica/utils"
+	"rmica/utils"
 )
 
 var DeleteCommand = cli.Command{

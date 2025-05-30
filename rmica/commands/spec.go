@@ -8,7 +8,7 @@ import (
 	"github.com/opencontainers/runc/libcontainer/specconv"
 	"github.com/urfave/cli"
 
-	"github.com/Egg12138/mica-OCI/rmica/utils"
+	"rmica/utils"
 )
 
 // Required fields:

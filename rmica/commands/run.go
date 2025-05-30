@@ -5,7 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Egg12138/mica-OCI/rmica/utils"
+	"rmica/utils"
+
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/urfave/cli"
 )
@@ -42,10 +43,8 @@ file named "config.json" and a root filesystem.`,
 			return err
 		}
 
-		// Get container ID from arguments
 		id := context.Args().First()
 
-		// Load the spec
 		spec, err := utils.SetupSpec(context)
 		if err != nil {
 			return fmt.Errorf("failed to load spec: %w", err)
@@ -67,7 +66,6 @@ file named "config.json" and a root filesystem.`,
 			Annotations: spec.Annotations,
 		}
 
-		// Write state file
 		stateFile := filepath.Join(containerDir, "state.json")
 		if err := utils.WriteJSON(stateFile, state); err != nil {
 			return fmt.Errorf("failed to write state file: %w", err)

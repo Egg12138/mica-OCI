@@ -4,7 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Egg12138/mica-OCI/rmica/utils"
+	"rmica/utils"
+
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/urfave/cli"
 )

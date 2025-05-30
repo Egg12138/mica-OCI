@@ -5,9 +5,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Egg12138/mica-OCI/rmica/constants"
-	pseudo_container "github.com/Egg12138/mica-OCI/rmica/pseudo-container"
-	"github.com/Egg12138/mica-OCI/rmica/utils"
+	"rmica/constants"
+	pseudo_container "rmica/pseudo-container"
+	"rmica/utils"
+
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/urfave/cli"
 )
@@ -64,18 +65,15 @@ filesystem.`,
 			Annotations: spec.Annotations,
 		}
 
-		// Write state file
 		stateFile := filepath.Join(containerDir, "state.json")
 		if err := utils.WriteJSON(stateFile, state); err != nil {
 			return fmt.Errorf("failed to write state file: %w", err)
 		}
 
-		// Verify container instance can be loaded
 		if _, err := pseudo_container.Load(root, id); err != nil {
 			return fmt.Errorf("failed to verify container instance: %w", err)
 		}
 
-		// Create PID file if specified
 		if pidFile := context.String("pid-file"); pidFile != "" {
 			if err := utils.CreatePidFile(pidFile, os.Getpid()); err != nil {
 				return fmt.Errorf("failed to create pid file: %w", err)
