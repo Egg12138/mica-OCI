@@ -3,7 +3,9 @@ package commands
 import (
 	"errors"
 	"fmt"
+	"os"
 
+	pseudo_container "rmica/pseudo-container"
 	"rmica/utils"
 
 	"github.com/opencontainers/runtime-spec/specs-go"
@@ -24,7 +26,7 @@ your host.`,
 			return err
 		}
 
-		container, err := utils.GetContainer(context)
+		container, err := pseudo_container.GetContainer(context)
 		if err != nil {
 			return err
 		}
@@ -32,6 +34,18 @@ your host.`,
 		status := container.Status()
 		switch status {
 		case specs.StateCreated:
+			// Notify socket
+			notifySocket, err := pseudo_container.NotifySocketStart(context, os.Getenv("NOTIFY_SOCKET"), container.Id())
+			if err != nil {
+				return err
+			}
+			if err := container.Exec(); err != nil {
+				return err
+			}
+			if notifySocket != nil {
+				return notifySocket.WaitForContainer(container)
+			}
+			// TODO: zero parameter is not allowed
 			return container.Start()
 		case specs.StateStopped:
 			return errors.New("cannot start a container that has stopped")

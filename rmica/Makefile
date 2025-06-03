@@ -22,7 +22,7 @@ IMG := $(SHELL_IMG)
 endif
 
 # RUN_OPTS depends on R
-RUN_OPTS ?= --runtime=$(R)
+RUN_OPTS ?= --runtime=$(R) --network=none
 
 ifeq ($(K),)
 RUN_OPTS := $(RUN_OPTS) --rm

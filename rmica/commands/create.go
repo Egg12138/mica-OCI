@@ -36,11 +36,13 @@ filesystem.`,
 			Usage: "specify the file to write the process id to",
 		},
 	},
+	// FIXME: create network namespace which is required by moby!
 	Action: func(context *cli.Context) error {
 		if err := utils.CheckArgs(context, 1, utils.ExactArgs); err != nil {
 			return err
 		}
 
+		// TODO: modulize 
 		id := context.Args().First()
 
 		// Load the spec
@@ -49,14 +51,12 @@ filesystem.`,
 			return fmt.Errorf("failed to load spec: %w", err)
 		}
 
-		// Create container directory
 		root := utils.GetRootDir(context)
 		containerDir := filepath.Join(root, id)
 		if err := os.MkdirAll(containerDir, 0o700); err != nil {
 			return fmt.Errorf("failed to create container directory: %w", err)
 		}
 
-		// Create state file
 		state := &specs.State{
 			Version:     spec.Version,
 			ID:          id,
@@ -65,7 +65,12 @@ filesystem.`,
 			Annotations: spec.Annotations,
 		}
 
-		stateFile := filepath.Join(containerDir, "state.json")
+		statePath := filepath.Join(containerDir, "state.json")
+		stateFile, err := os.OpenFile(statePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
+		if err != nil {
+			return err
+		}
+		defer stateFile.Close()
 		if err := utils.WriteJSON(stateFile, state); err != nil {
 			return fmt.Errorf("failed to write state file: %w", err)
 		}

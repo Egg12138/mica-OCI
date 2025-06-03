@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"rmica/constants"
 	"rmica/utils"
 
 	"github.com/opencontainers/runtime-spec/specs-go"
@@ -66,7 +67,12 @@ file named "config.json" and a root filesystem.`,
 			Annotations: spec.Annotations,
 		}
 
-		stateFile := filepath.Join(containerDir, "state.json")
+		statePath := filepath.Join(containerDir, constants.StateFilename)
+		stateFile, err := os.OpenFile(statePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
+		if err != nil {
+			return err
+		}
+		defer stateFile.Close()
 		if err := utils.WriteJSON(stateFile, state); err != nil {
 			return fmt.Errorf("failed to write state file: %w", err)
 		}

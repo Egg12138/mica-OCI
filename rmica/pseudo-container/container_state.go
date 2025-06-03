@@ -14,6 +14,8 @@ import (
 
 // ==================== Type Definitions ====================
 
+// runc OOP state machine;
+// TODO: replace with spec-go state machine
 type ContainerState interface {
 	transition(ContainerState) error
 	destroy() error
@@ -29,7 +31,7 @@ type StateTransitionError struct {
 
 func (s *StateTransitionError) Error() string {
 	errMsg := fmt.Sprintf("invalid state transition from %s to %s", s.From, s.To)
-	logger.Errorf(errMsg)
+	logger.Errorf("%s", errMsg)
 	return errMsg
 }
 
@@ -40,9 +42,11 @@ func newStateTransitionError(from, to ContainerState) error {
 	}
 }
 
-// ==================== Switch State ====================
+// ==================== Switch States ====================
 // Creating, Created, Stopped, Running
 // in runc: Created, Runnig, Paused, Stopped
+// <State>.transition(to):
+// 
 
 type StoppedState struct {
 	c *Container
@@ -184,7 +188,7 @@ func destroy(c *Container) error {
 	}
 
 	// Remove container directory
-	containerDir := filepath.Join(c.Root, c.Id())
+	containerDir := filepath.Join(c.root, c.Id())
 	if err := os.RemoveAll(containerDir); err != nil {
 		return fmt.Errorf("failed to remove container directory: %w", err)
 	}

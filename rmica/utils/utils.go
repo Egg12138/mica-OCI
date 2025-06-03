@@ -4,13 +4,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+
 	"os"
 	"path/filepath"
 	"strconv"
 
 	"rmica/constants"
-	pseudo_container "rmica/pseudo-container"
 
+	"github.com/opencontainers/runc/libcontainer/utils"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/urfave/cli"
 )
@@ -21,7 +23,6 @@ const (
 	MaxArgs
 )
 
-// CheckArgs checks if the number of arguments matches the expected count
 func CheckArgs(context *cli.Context, expected int, typ int) error {
 	argc := context.NArg()
 	if typ == ExactArgs && argc != expected {
@@ -35,7 +36,7 @@ func CheckArgs(context *cli.Context, expected int, typ int) error {
 	}
 	return nil
 }
-// GetRootDir returns the root directory for containers
+
 func GetRootDir(context *cli.Context) string {
 	root := context.GlobalString("root")
 	if root == "" {
@@ -44,18 +45,19 @@ func GetRootDir(context *cli.Context) string {
 	return root
 }
 
-// WriteJSON writes the given data to a JSON file
-func WriteJSON(path string, v interface{}) error {
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
+// WriteJSON writes the provided struct v to w using standard json marshaling
+// without a trailing newline. This is used instead of json.Encoder because
+// there might be a problem in json decoder in some cases, see:
+// https://github.com/docker/docker/issues/14203#issuecomment-174177790
+func WriteJSON(w io.Writer, v interface{}) error {
+	data, err := json.Marshal(v)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-
-	return json.NewEncoder(f).Encode(v)
+	_, err = w.Write(data)
+	return err
 }
 
-// CreatePidFile creates a PID file for the given process
 func CreatePidFile(path string, pid int) error {
 	var (
 		tmpDir  = filepath.Dir(path)
@@ -73,7 +75,6 @@ func CreatePidFile(path string, pid int) error {
 	return os.Rename(tmpName, path)
 } 
 
-// setupSpec performs initial setup based on the cli.Context for the container
 func SetupSpec(context *cli.Context) (*specs.Spec, error) {
 	bundle := context.String("bundle")
 	if bundle != "" {
@@ -88,7 +89,6 @@ func SetupSpec(context *cli.Context) (*specs.Spec, error) {
 	return spec, nil
 }
 
-// LoadSpec loads the specification from the provided path.
 func LoadSpec(cPath string) (spec *specs.Spec, err error) {
 	cf, err := os.Open(cPath)
 	if err != nil {
@@ -109,20 +109,41 @@ func LoadSpec(cPath string) (spec *specs.Spec, err error) {
 	return spec, validateTaskSpec(spec.Process)
 }
 
-// TODO: migrate to utils_mcs
+// TODO: Client task
 func validateTaskSpec(spec *specs.Process) error {
 	return nil
 }
 
-// alway consider the instance as a `container`
-func GetContainer(context *cli.Context) (*pseudo_container.Container, error) {
-	id := context.Args().First()
-	if id == "" {
-		return nil, errEmptyID
+// From runc::libcontainer
+func validateID(id string) error {
+	if len(id) < 1 {
+		return ErrInvalidID
 	}
-	root := context.GlobalString("root")
-	return pseudo_container.Load(root, id)
+
+	// Allowed characters: 0-9 A-Z a-z _ + - .
+	for i := range len(id) {
+		c := id[i]
+		switch {
+		case c >= 'a' && c <= 'z':
+		case c >= 'A' && c <= 'Z':
+		case c >= '0' && c <= '9':
+		case c == '_':
+		case c == '+':
+		case c == '-':
+		case c == '.':
+		default:
+			return ErrInvalidID
+		}
+
+	}
+
+	if string(os.PathSeparator)+id != utils.CleanPath(string(os.PathSeparator)+id) {
+		return ErrInvalidID
+	}
+
+	return nil
 }
+
 
 func getDefaultImagePath() string {
 	cwd, err := os.Getwd()
@@ -136,3 +157,4 @@ func getDefaultImagePath() string {
 func SetupIO() (*tty, error) {
 	return nil, nil
 }
+
