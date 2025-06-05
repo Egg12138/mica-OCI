@@ -11,8 +11,9 @@ import (
 	"github.com/urfave/cli"
 
 	"rmica/commands"
-	"rmica/constants"
+	"rmica/defs"
 	"rmica/logger"
+	"rmica/utils"
 )
 
 // version is set from the contents of VERSION file.
@@ -33,8 +34,8 @@ func printVersion(c *cli.Context) {
 
 func main() {
 	app := cli.NewApp()
-	app.Name = constants.RuntimeName
-	app.Usage = constants.Usage
+	app.Name = defs.RuntimeName
+	app.Usage = defs.Usage
 	app.Version = strings.TrimSpace(version) + extraVersion
 
 	cli.VersionPrinter = printVersion
@@ -42,7 +43,7 @@ func main() {
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "root",
-			Value: constants.Root,
+			Value: defs.Root,
 			Usage: "root directory for storage of container state",
 		},
 		cli.BoolFlag{
@@ -84,7 +85,7 @@ func main() {
 	}
 
 	app.Before = func(context *cli.Context) error {
-		if err := reviseRootDir(context); err != nil {
+		if err := utils.ReviseRootDir(context); err != nil {
 			return err
 		}
 

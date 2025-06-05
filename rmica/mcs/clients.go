@@ -11,7 +11,8 @@ type ClientConf struct {
 	AutoBoot   bool   `json:"auto_boot"`
 }
 
-type ClientProcess struct {
+type ClientTask struct {
 	Name string `json:"name"`
-	tty string	
+	Terminal bool `json:"terminal,omitempty"`
+	Tty string	`json:"tty"`
 }

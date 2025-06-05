@@ -3,15 +3,28 @@ package commands
 import (
 	"fmt"
 	"os"
-	"path/filepath"
-
-	"rmica/constants"
-	pseudo_container "rmica/pseudo-container"
+	"rmica/defs"
 	"rmica/utils"
 
-	"github.com/opencontainers/runtime-spec/specs-go"
+	pseudo_container "rmica/pseudo-container"
+
 	"github.com/urfave/cli"
 )
+
+// FIXME: create network namespace which is required by moby!
+func CreateAction(context *cli.Context) error {
+
+	if err := utils.CheckArgs(context, 1, utils.ExactArgs); err != nil {
+		return err
+	}
+	status, err := pseudo_container.StartContainer(context, defs.CT_ACT_CREATE, nil)
+	if err == nil {
+		os.Exit(status)
+	}
+	return fmt.Errorf("`rmica create` failed: %w", err)
+
+}
+
 
 var CreateCommand = cli.Command{
 	Name:  "create",
@@ -22,8 +35,9 @@ Where "<container-id>" is your name for the instance of the container that you
 are starting. The name you provide for the container instance must be unique on
 your host.`,
 	Description: `The create command creates an instance of a container for a bundle. The bundle
-is a directory with a specification file named "` + constants.SpecConfig + `" and a root
+is a directory with a specification file named "` + defs.SpecConfig + `" and a root
 filesystem.`,
+	// bundle dir is the root of OCI bundle, including: config.json, rootfs, state.json, ...
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:  "bundle, b",
@@ -31,60 +45,16 @@ filesystem.`,
 			Usage: `path to the root of the bundle directory, defaults to the current directory`,
 		},
 		cli.StringFlag{
+			Name:  "console-socket",
+			Value: "",
+			Usage: "path to an AF_UNIX socket which will receive a file descriptor referencing the master end of the console's pseudoterminal",
+		},
+		cli.StringFlag{
 			Name:  "pid-file",
 			Value: "",
 			Usage: "specify the file to write the process id to",
 		},
 	},
-	// FIXME: create network namespace which is required by moby!
-	Action: func(context *cli.Context) error {
-		if err := utils.CheckArgs(context, 1, utils.ExactArgs); err != nil {
-			return err
-		}
 
-		// TODO: modulize 
-		id := context.Args().First()
-
-		// Load the spec
-		spec, err := utils.SetupSpec(context)
-		if err != nil {
-			return fmt.Errorf("failed to load spec: %w", err)
-		}
-
-		root := utils.GetRootDir(context)
-		containerDir := filepath.Join(root, id)
-		if err := os.MkdirAll(containerDir, 0o700); err != nil {
-			return fmt.Errorf("failed to create container directory: %w", err)
-		}
-
-		state := &specs.State{
-			Version:     spec.Version,
-			ID:          id,
-			Status:      specs.StateCreating,
-			Bundle:      context.String("bundle"),
-			Annotations: spec.Annotations,
-		}
-
-		statePath := filepath.Join(containerDir, "state.json")
-		stateFile, err := os.OpenFile(statePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
-		if err != nil {
-			return err
-		}
-		defer stateFile.Close()
-		if err := utils.WriteJSON(stateFile, state); err != nil {
-			return fmt.Errorf("failed to write state file: %w", err)
-		}
-
-		if _, err := pseudo_container.Load(root, id); err != nil {
-			return fmt.Errorf("failed to verify container instance: %w", err)
-		}
-
-		if pidFile := context.String("pid-file"); pidFile != "" {
-			if err := utils.CreatePidFile(pidFile, os.Getpid()); err != nil {
-				return fmt.Errorf("failed to create pid file: %w", err)
-			}
-		}
-
-		return nil
-	},
+	Action: CreateAction,
 } 

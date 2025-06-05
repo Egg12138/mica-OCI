@@ -1,4 +1,4 @@
-package constants
+package defs
 
 const (
 	RuntimeName = "rmica"
@@ -16,6 +16,8 @@ but does not actually handling any containers following the OCI specification.
 
 	StateFilename    = "state.json"
 	ExecFifoFilename = "exec.fifo"
+
+	ContainerDirPerm = 0o700
 
 	// mica-related:
 

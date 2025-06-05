@@ -7,6 +7,6 @@ type Stats struct {
 	ClientStates *mcs.ClientStats
 }
 
-func newEmpty() Stats {
+func NewEmpty() Stats {
 	return Stats{}
 }

@@ -1,6 +1,7 @@
 package pseudo_container
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -11,13 +12,16 @@ import (
 	"time"
 
 	"rmica/communication"
-	"rmica/constants"
+	"rmica/defs"
 	"rmica/logger"
 	"rmica/mcs"
 	"rmica/utils"
 
+	"github.com/opencontainers/runc/libcontainer"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/urfave/cli"
+
+	securejoin "github.com/cyphar/filepath-securejoin"
 )
 
 // ==================== Type Definitions ====================
@@ -25,8 +29,10 @@ import (
 
 type Container struct {
 	id      string
+	// from global flag --root: 
 	root    string
-	stateDir string
+	// stateDir = root/id
+	// stateDir string
 	// Use specs-go::Spec, State to represent, following OCI-spec
 	config  *specs.Spec
 	state   ContainerState
@@ -35,6 +41,21 @@ type Container struct {
 	m 			sync.Mutex
 	// TODO: MCS client manager, will defined in mcs.go
 	// clientManager *clientManager
+}
+
+// TODO: add more members
+type runner struct {
+	init 					bool
+	shouldDestory bool
+	detach  			bool
+	pidFile 			string
+	container 		*Container
+	action     		defs.CtAct
+	notifySocket 	*notifySocket
+	consoleSocket string
+	criuOpts			*libcontainer.CriuOpts
+	// consoleSocket
+
 }
 
 
@@ -50,8 +71,10 @@ func (c *Container) Root() string {
 }
 
 func (c *Container) StateDir() string {
-	return c.stateDir
+	// return c.stateDir
+	return filepath.Join(c.root, c.id)
 }
+
 
 
 // TODO: handle cocurrency
@@ -108,24 +131,11 @@ func (c *Container) ClientProcesses() ([]int, error) {
 func (c *Container) Stats() (*Stats, error) {
 	// c.m.Lock()
 	// defer c.m.Unlock()
-	stats := newEmpty()
+	stats := NewEmpty()
 	return &stats, nil
 }
 
 
-
-func Load(root, id string) (*Container, error) {
-	containerDir := filepath.Join(root, id)
-	if _, err := os.Stat(containerDir); err != nil {
-		return nil, fmt.Errorf("container %s not found: %w", id, err)
-	}
-
-	return &Container{
-		id:   id,
-		root: root,
-		state: &StoppedState{},
-	}, nil
-}
 
 func (c *Container) Set(config *specs.Spec) error {
 	c.m.Lock()
@@ -149,8 +159,8 @@ func (c *Container) Set(config *specs.Spec) error {
 func (c *Container) Init() error {
 	// Create container directory 
 	// e.g.: /run/containerd/io.containerd.runtime.task.v2/moby/<id>
-	containerDir := filepath.Join(c.Root(), c.Id())
-	if err := os.MkdirAll(containerDir, 0o700); err != nil {
+	stateDir := c.StateDir()
+	if err := os.MkdirAll(stateDir, defs.ContainerDirPerm); err != nil {
 		return fmt.Errorf("failed to create container directory: %w", err)
 	}
 
@@ -184,7 +194,7 @@ func (c *Container) start() error {
 	defer c.m.Unlock()
 
 	// 合法性检查：如 exec fifo 创建
-	if err := c.createExecFifo(constants.ExecFifoFilename); err != nil {
+	if err := c.createExecFifo(defs.ExecFifoFilename); err != nil {
 		return fmt.Errorf("failed to create exec fifo: %w", err)
 	}
 
@@ -214,6 +224,23 @@ func (c *Container) exec() error {
 		return fmt.Errorf("failed to send exec to micad or got empty response")
 	}
 	logger.Infof("[container] exec succeeded for id=%s, response=%s", c.id, res)
+	return nil
+}
+
+
+func (c *Container) Run() error {
+	c.m.Lock()
+	defer c.m.Unlock()
+	return c.run()
+}
+
+func (c *Container) run() error {
+	logger.Infof("[container] run called for id=%s", c.id)
+	res := communication.Send2mica("run")
+	if res == "" {
+		logger.Errorf("[container] run failed for id=%s: empty response from micad", c.id)
+		return fmt.Errorf("failed to send run to micad or got empty response")
+	}
 	return nil
 }
 
@@ -265,6 +292,22 @@ func (c *Container) resume() error {
 		return fmt.Errorf("failed to send resume to micad or got empty response")
 	}
 	logger.Infof("[container] resume succeeded for id=%s, response=%s", c.id, res)
+	return nil
+}
+
+func (c *Container) Restore() error {
+	c.m.Lock()
+	defer c.m.Unlock()
+	return c.restore()
+}
+
+func (c *Container) restore() error {
+	logger.Infof("[container] restore called for id=%s", c.id)
+	res := communication.Send2mica("restore")
+	if res == "" {
+		logger.Errorf("[container] restore failed for id=%s: empty response from micad", c.id)
+		return fmt.Errorf("failed to send restore to micad or got empty response")
+	}
 	return nil
 }
 
@@ -330,7 +373,7 @@ func (c *Container) hasInit() bool {
 } 
 
 func (c *Container) saveState(s *specs.State) (retErr error) {
-	tmpFile, err := os.CreateTemp(c.stateDir, "state-")
+	tmpFile, err := os.CreateTemp(c.StateDir(), "state-")
 		if err != nil {
 			return err
 		}
@@ -351,12 +394,12 @@ func (c *Container) saveState(s *specs.State) (retErr error) {
 			return err
 		}
 
-		stateFilePath := filepath.Join(c.stateDir, constants.StateFilename)
+		stateFilePath := filepath.Join(c.StateDir(), defs.StateFilename)
 		return os.Rename(tmpFile.Name(), stateFilePath)
 
 }
 
-func (c *Container) updateState(clientProcess *mcs.ClientProcess) (*specs.State, error) {
+func (c *Container) updateState(clientProcess *mcs.ClientTask) (*specs.State, error) {
 	state := c.State()
 	if err := c.saveState(&state); err != nil {
 		return nil, err
@@ -405,6 +448,18 @@ func (s *notifySocket) Close() error {
 	return s.socket.Close()
 }
 
+// If systemd is supporting sd_notify protocol, this function will add support
+// for sd_notify protocol from within the container.
+func (s *notifySocket) setupSpec(spec *specs.Spec) {
+	pathInContainer := filepath.Join("/run/notify", path.Base(s.socketPath))
+	mount := specs.Mount{
+		Destination: path.Dir(pathInContainer),
+		Source:      path.Dir(s.socketPath),
+		Options:     []string{"bind", "nosuid", "noexec", "nodev", "ro"},
+	}
+	spec.Mounts = append(spec.Mounts, mount)
+	spec.Process.Env = append(spec.Process.Env, "NOTIFY_SOCKET="+pathInContainer)
+}
 
 func (s *notifySocket) bindSocket() error {
 	addr := net.UnixAddr{
@@ -480,8 +535,257 @@ func (s *notifySocket) fakeSuccessRun(state specs.State) error {
 		return err
 	}
 	time.Sleep(time.Hour)
-	select {} 
+	// select {} 
 	return nil
 }
 
 
+// ============================
+
+// NOTICE: we havn't split config and spec in rmica, so do not update config here
+func createContainer(context *cli.Context, id string, spec *specs.Spec) (*Container, error) {
+	return Create(context.GlobalString("root"), id, spec)
+}
+
+
+// TODO: For compatibility, use runc libcontainer.CriuOpts as criuOpts.
+func StartContainer(context *cli.Context, action defs.CtAct, criuOpts *libcontainer.CriuOpts) (int, error) {
+	if err := utils.RevisePidFile(context); err != nil {
+		return -1, err
+	}
+	spec, err := utils.SetupSpec(context)
+	if err != nil {
+		return -1, fmt.Errorf("failed to load spec: %w", err)
+	}
+
+	cntrId := context.Args().First()
+	if cntrId == "" {
+		return -1, utils.ErrEmptyID
+	}
+
+	// IDEA: StartContainer 进程（runc/rmica本身)与子进程（容器1号进程）进行通信同步；
+	// 而这个通信同步管理，混部的runtime部分需要承担多少? 
+	// NOTICE: 整合后，runtime部分就属于 mica daemon, 所以是同一个进程；
+	// rmica 本身会 wait for "ready" 或其他, 
+	// LEARN: 后续参考 kata runtime 的思路
+	notifySocket := newNotifySocket(context, os.Getenv("NOTIFY_SOCKET"), cntrId)
+	if notifySocket != nil {
+		notifySocket.setupSpec(spec)
+	}
+
+	cntr, err := createContainer(context, cntrId, spec)
+	if err != nil {
+		return -1, fmt.Errorf("failed to create container: %w", err)
+	}
+
+	if notifySocket != nil {
+		if err := notifySocket.setupSocketDirectory(); err != nil {
+			return -1, fmt.Errorf("failed to setup socket directory: %w", err)
+		}
+		if action == defs.CT_ACT_RUN {
+			if err := notifySocket.bindSocket(); err != nil {
+				return -1, fmt.Errorf("failed to bind socket: %w", err)
+			}
+		}
+	}
+
+	cp := &mcs.ClientTask{
+		Terminal: false,
+		Name: "test",
+		Tty: "/dev/micatty",
+	}
+
+	r := &runner{
+		init:  true,
+		shouldDestory: !context.Bool("keep"),
+		detach:  context.Bool("detach"),
+		pidFile: context.String("pid-file"),
+		container: cntr,
+		action: action,
+		notifySocket: notifySocket,
+		criuOpts: criuOpts,
+	}
+
+	// statePath := filepath.Join(cntr.StateDir(), constants.StateFilename)
+	// if err := os.MkdirAll(statePath, 0o700); err != nil {
+		// return -1, fmt.Errorf("failed to create container directory: %w", err)
+	// }
+	// stateFile, err := os.OpenFile(statePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
+
+	// state := &specs.State{
+	// 	Version:     spec.Version,
+	// 	ID:          cntrId,
+	// 	Status:      specs.StateCreating,
+	// 	Bundle:      context.String("bundle"),
+	// 	Annotations: spec.Annotations,
+	// }
+
+	// if err := utils.WriteJSON(stateFile, state); err != nil {
+	// 	return -1, fmt.Errorf("failed to write state file: %w", err)
+	// }
+
+	// if _, err := Load(root, cntrId); err != nil {
+	// 	return -1, fmt.Errorf("failed to verify container instance: %w", err)
+	// }
+
+	if pidFile := context.String("pid-file"); pidFile != "" {
+		if err := utils.CreatePidFile(pidFile, os.Getpid()); err != nil {
+			return -1, fmt.Errorf("failed to create pid file: %w", err)
+		}
+	}
+
+	return r.runTask(cp)
+}
+
+func Load(root, id string) (*Container, error) {
+	containerDir := filepath.Join(root, id)
+	if _, err := os.Stat(containerDir); err != nil {
+		return nil, fmt.Errorf("container %s not found: %w", id, err)
+	}
+
+	return &Container{
+		id:   id,
+		root: root,
+		state: &StoppedState{},
+	}, nil
+}
+
+// NOTICE Parameter config should be expanded
+func Create(root, id string, config *specs.Spec) (*Container, error) {
+	if root == "" {
+		return nil, errors.New("root is empty")
+	}
+
+	if err := utils.ValidateID(id); err != nil {
+		return nil, err
+	}
+
+	if err := utils.ValidateSpec(config); err != nil {
+		return nil, err
+	}
+
+	if err := utils.ValidateTaskSpec(config); err != nil {
+		return nil, err
+	}
+
+	if err := os.MkdirAll(root, 0o700); err != nil {
+		return nil, fmt.Errorf("failed to create root dir: %s; %w", root, err)
+	}
+
+	stateDir, err := securejoin.SecureJoin(root, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create state directory: %s; %w", stateDir, err)
+	}
+
+	if _, err := os.Stat(stateDir); err == nil {
+		return nil, utils.ErrExist
+	} else if !os.IsNotExist(err) {
+		return nil, fmt.Errorf("failed to stat state directory: %s; %w", stateDir, err)
+	}
+
+	if err := os.Mkdir(stateDir, 0o711); err != nil {
+		return nil, fmt.Errorf("failed to create state directory for parent: %s; %w", stateDir, err)
+	}
+
+	// TODO: create network namespace 
+
+	if err := os.Mkdir(stateDir, 0o711); err != nil {
+		return nil, fmt.Errorf("failed to create state directory: %s; %w", stateDir, err)
+	}
+	// TODO: Members initialization.
+	cntr := &Container{
+		id: id,
+		root: root,
+		config: config,
+	}
+	cntr.state = &StoppedState{c: cntr}
+	return cntr, nil
+}
+
+
+// IDEA: what do we need to run a task?
+// TODO: update ClientProcess
+// TODO: wrap many members in `runner`, as action, terminal, etc.
+// LEARN: analyze why LISTEN_FDS is used in runc?
+func (r *runner) runTask(taskConfig *mcs.ClientTask) (int, error) {
+	var err error = nil
+	defer func() {
+		if err != nil {
+			r.destroy()
+		}
+	}()
+
+	if err = r.checkTerminal(taskConfig); err != nil {
+		return -1, err
+	}
+
+	// task, err := newTaskFromConfig(taskConfig)
+	logger.Infof("[rmica] runTask called for id=%s", r.container.Id())
+	
+
+	switch r.action {
+	case defs.CT_ACT_RUN:
+		err = r.container.Run()
+	case defs.CT_ACT_CREATE:
+		err = r.container.Start()
+	case defs.CT_ACT_RESTORE:
+		err = r.container.Restore()
+	}
+	
+	verifyContainerDir(r.container)
+
+	return 0, err
+}
+
+func verifyContainerDir(container *Container) {
+	root := container.Root()
+	id := container.Id()
+	statePath := filepath.Join(container.StateDir(), defs.StateFilename)
+	stateFile, err := os.OpenFile(statePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
+	if err != nil {
+		logger.Errorf(
+			"[rmica] verifyContainerDir: failed to open state file %s id=%s: %v", 
+			statePath, id, err)
+	}
+  logger.Infof("[rmica] verifyContainerDir called for id=%s", id)
+	logger.Infof("[rmica] root=%s, state.json=%s", root, statePath)
+	defer stateFile.Close()
+	// recursively travel root dir and print like tree:
+	filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		logger.Infof("[rmica] %s", path)
+		return nil
+	})
+}
+
+func (r *runner) destroy() {
+	if r.shouldDestory {
+		if err := r.container.Destroy(); err != nil {
+			logger.Warnf("[rmica] failed to destroy container<%s>: %v", r.container.Id(), err)
+		}
+	}
+}
+
+// TODO: mica console 
+func (r *runner) checkTerminal(taskConfig *mcs.ClientTask) error {
+	detach := r.detach || (r.action == defs.CT_ACT_CREATE)
+  if detach && taskConfig.Terminal && r.consoleSocket == "" {
+		return errors.New("cannot allocate tty if rmica will detach without setting a console socket")
+	}
+	if (!detach || !taskConfig.Terminal) && r.consoleSocket != "" {
+		return errors.New("cannot allocate tty if rmica will not detach")
+	}
+	if taskConfig.Terminal && r.consoleSocket != "" {
+		return errors.New("cannot allocate tty if rmica will not detach or allocate tty")
+	}
+	return nil
+}
+
+
+// NOTICE: in runc, newTaskFromConfig() converts spec to 
+// but in rmica, it is just a dummy
+func newTaskFromConfig(taskConfig *mcs.ClientTask) (*mcs.ClientTask, error) {
+	return taskConfig, nil
+}

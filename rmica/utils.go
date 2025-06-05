@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -73,32 +72,3 @@ func configLogrus(context *cli.Context) error {
 
 	return nil
 }
-
-func reviseRootDir(context *cli.Context) error {
-	if !context.IsSet("root") {
-		return nil
-	}
-	root, err := filepath.Abs(context.GlobalString("root"))
-	if err != nil {
-		return err
-	}
-	if root == "/" {
-		// This can happen if --root argument is
-		//  - "" (i.e. empty);
-		//  - "." (and the CWD is /);
-		//  - "../../.." (enough to get to /);
-		//  - "/" (the actual /).
-		return errors.New("ojption --root argument should not be set to /")
-	}
-
-	if err := os.MkdirAll(root, 0o700); err != nil {
-		return fmt.Errorf("failed to create root directory: %v", err)
-	}
-
-	if err := os.Chmod(root, 0o700); err != nil {
-		return fmt.Errorf("failed to set root directory permissions: %v", err)
-	}
-
-	return context.GlobalSet("root", root)
-}
-

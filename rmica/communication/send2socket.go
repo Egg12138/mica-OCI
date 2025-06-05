@@ -7,12 +7,12 @@ import (
 	"os"
 	"syscall"
 
-	"rmica/constants"
+	"rmica/defs"
 	"rmica/logger"
 )
 
 func Send2mica(data string) string {
-	res, err := send2socket(data, constants.DefaultMicaSocket)
+	res, err := send2socket(data, defs.DefaultMicaSocket)
 	if err != nil {
 		return ""
 	}

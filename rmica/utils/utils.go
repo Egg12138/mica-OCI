@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"rmica/constants"
+	"rmica/defs"
 
 	"github.com/opencontainers/runc/libcontainer/utils"
 	"github.com/opencontainers/runtime-spec/specs-go"
@@ -24,15 +24,20 @@ const (
 )
 
 func CheckArgs(context *cli.Context, expected int, typ int) error {
+	var err error
 	argc := context.NArg()
 	if typ == ExactArgs && argc != expected {
-		return fmt.Errorf("incorrect number of arguments, got %d, expected %d", argc, expected)
+		err = fmt.Errorf("incorrect number of arguments, got %d, expected %d", argc, expected)
 	}
 	if typ == MinArgs && argc < expected {
-		return fmt.Errorf("incorrect number of arguments, got %d, expected at least %d", argc, expected)
+		err = fmt.Errorf("incorrect number of arguments, got %d, expected at least %d", argc, expected)
 	}
 	if typ == MaxArgs && argc > expected {
-		return fmt.Errorf("incorrect number of arguments, got %d, expected at most %d", argc, expected)
+		err = fmt.Errorf("incorrect number of arguments, got %d, expected at most %d", argc, expected)
+	}
+	if err != nil {
+		cli.ShowCommandHelp(context, context.Command.Name)
+		return err
 	}
 	return nil
 }
@@ -82,7 +87,7 @@ func SetupSpec(context *cli.Context) (*specs.Spec, error) {
 			return nil, err
 		}
 	}
-	spec, err := LoadSpec(constants.SpecConfig)
+	spec, err := LoadSpec(defs.SpecConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -106,16 +111,21 @@ func LoadSpec(cPath string) (spec *specs.Spec, err error) {
 		return nil, errors.New("config cannot be null")
 	}
 	// return spec, validateProcessSpec(spec.Process)
-	return spec, validateTaskSpec(spec.Process)
+	return spec, ValidateTaskSpec(spec)
 }
 
 // TODO: Client task
-func validateTaskSpec(spec *specs.Process) error {
+func ValidateTaskSpec(spec *specs.Spec) error {
+	return nil
+}
+
+// TODO: Client task
+func ValidateSpec(spec *specs.Spec) error {
 	return nil
 }
 
 // From runc::libcontainer
-func validateID(id string) error {
+func ValidateID(id string) error {
 	if len(id) < 1 {
 		return ErrInvalidID
 	}
@@ -158,3 +168,47 @@ func SetupIO() (*tty, error) {
 	return nil, nil
 }
 
+
+
+// Revise the value of flag "pid-file" to the absolute path.
+func RevisePidFile(context *cli.Context) error {
+	pidFile := context.GlobalString("pid-file")
+	if pidFile == "" {
+		return errors.New("--pid-file is required")
+	}
+
+	pidFile, err := filepath.Abs(pidFile)
+	if err != nil {
+		return err
+	}
+	return context.Set("pid-file", pidFile)
+}
+
+// Revise the value of flag "root" to the absolute path.
+func ReviseRootDir(context *cli.Context) error {
+	if !context.IsSet("root") {
+		return nil
+	}
+	root, err := filepath.Abs(context.GlobalString("root"))
+	if err != nil {
+		return err
+	}
+	if root == "/" {
+		// This can happen if --root argument is
+		//  - "" (i.e. empty);
+		//  - "." (and the CWD is /);
+		//  - "../../.." (enough to get to /);
+		//  - "/" (the actual /).
+		return errors.New("ojption --root argument should not be set to /")
+	}
+
+	if err := os.MkdirAll(root, 0o700); err != nil {
+		return fmt.Errorf("failed to create root directory: %v", err)
+	}
+
+	if err := os.Chmod(root, 0o700); err != nil {
+		return fmt.Errorf("failed to set root directory permissions: %v", err)
+	}
+
+	return context.GlobalSet("root", root)
+}

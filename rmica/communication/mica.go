@@ -9,12 +9,12 @@ import (
 	"strings"
 	"time"
 
-	"rmica/constants"
+	"rmica/defs"
 
 	"gopkg.in/ini.v1"
 )
 
-var SocketPath = constants.DefaultMicaSocket
+var SocketPath = defs.DefaultMicaSocket
 
 type CreateMsg struct {
 	CPU     uint32
@@ -187,13 +187,13 @@ func ParseConfig(configFile string) (*CreateMsg, error) {
 func SendCreateMsg(configFile string) error {
 	micaConfig := configFile
 	if !fileExists(micaConfig) {
-		micaConfig = filepath.Join(constants.MicaConfigPath, configFile)
+		micaConfig = filepath.Join(defs.MicaConfigPath, configFile)
 		if !fileExists(micaConfig) {
 			return fmt.Errorf("configuration file '%s' not found", configFile)
 		}
 	}
 
-		target := filepath.Join(SocketPath, constants.MicaSocketName)
+		target := filepath.Join(SocketPath, defs.MicaSocketName)
 		if !fileExists(target) {
 		return fmt.Errorf("error occurred! Please check if %s is running", target)
 	}
@@ -205,7 +205,7 @@ func SendCreateMsg(configFile string) error {
 
 	fmt.Printf("Creating %s...\n", strings.TrimRight(string(msg.Name[:]), "\x00"))
 
-	socket, err := NewSocket(filepath.Join(SocketPath, constants.MicaSocketName))
+	socket, err := NewSocket(filepath.Join(SocketPath, defs.MicaSocketName))
 	if err != nil {
 		return err
 	}
