@@ -26,7 +26,6 @@ import (
 
 // ==================== Type Definitions ====================
 
-
 type Container struct {
 	id      string
 	// from global flag --root: 
@@ -45,22 +44,19 @@ type Container struct {
 
 // TODO: add more members
 type runner struct {
-	init 					bool
+	init          bool
 	shouldDestory bool
-	detach  			bool
-	pidFile 			string
-	container 		*Container
-	action     		defs.CtAct
-	notifySocket 	*notifySocket
+	detach        bool
+	pidFile       string
+	container     *Container
+	action        defs.CtAct
+	notifySocket  *notifySocket
 	consoleSocket string
-	criuOpts			*libcontainer.CriuOpts
-	// consoleSocket
-
+	criuOpts      *libcontainer.CriuOpts
 }
 
 
 // ==================== Getters and Setters ====================
-
 
 func (c *Container) Id() string {
 	return c.id
@@ -74,8 +70,6 @@ func (c *Container) StateDir() string {
 	// return c.stateDir
 	return filepath.Join(c.root, c.id)
 }
-
-
 
 // TODO: handle cocurrency
 // Status => specs::ContainerState, container status representation
@@ -134,8 +128,6 @@ func (c *Container) Stats() (*Stats, error) {
 	stats := NewEmpty()
 	return &stats, nil
 }
-
-
 
 func (c *Container) Set(config *specs.Spec) error {
 	c.m.Lock()
@@ -226,7 +218,6 @@ func (c *Container) exec() error {
 	logger.Infof("[container] exec succeeded for id=%s, response=%s", c.id, res)
 	return nil
 }
-
 
 func (c *Container) Run() error {
 	c.m.Lock()
@@ -328,9 +319,6 @@ func (c *Container) destroy() error {
 	return nil
 }
 
-
-
-
 // ==================== Helper Functions ====================
 
 // HostRootUID returns the root uid for the process on host (always 0 for rmica, no user namespace)
@@ -366,7 +354,6 @@ func (c *Container) createExecFifo(fifoName string) error {
 	}
 	return nil
 }
-
 
 func (c *Container) hasInit() bool {
 	return c.initPid != 0
@@ -417,17 +404,21 @@ func GetContainer(context *cli.Context) (*Container, error) {
 	return Load(root, id)
 }
 
+// ==================== Notify Socket Operations ====================
 
 // From runc:
 // As a container monitor
 type notifySocket struct {
+	// ok, as a UDS listenr
 	socket     *net.UnixConn
+	// should not be Nil
 	host       string
+	// ok, mark a listner
 	socketPath string
 }
 
 func newNotifySocket(context *cli.Context, notifySocketHost string, id string) *notifySocket {
-
+	// Basically, notifier does not matter. Hence we just return when host is empty.
 	if notifySocketHost == "" {
 		return nil
 	}
@@ -498,11 +489,9 @@ func NotifySocketStart(context *cli.Context, notifySocketHost, id string) (*noti
 	return notifySocket, nil
 }
 
-
 func (s *notifySocket) WaitForContainer(container *Container) error {
 	state := container.State()
 	return s.fakeSuccessRun(state)
-
 }
 
 func (s *notifySocket) fakeSuccessRun(state specs.State) error {
@@ -539,57 +528,76 @@ func (s *notifySocket) fakeSuccessRun(state specs.State) error {
 	return nil
 }
 
+// ==================== Verification Utilities ====================
 
-// ============================
-
-// NOTICE: we havn't split config and spec in rmica, so do not update config here
-func createContainer(context *cli.Context, id string, spec *specs.Spec) (*Container, error) {
-	return Create(context.GlobalString("root"), id, spec)
+func verifyContainerDir(container *Container) {
+	root := container.Root()
+	id := container.Id()
+	statePath := filepath.Join(container.StateDir(), defs.StateFilename)
+	stateFile, err := os.OpenFile(statePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
+	if err != nil {
+		logger.Errorf(
+			"[rmica] verifyContainerDir: failed to open state file %s id=%s: %v", 
+			statePath, id, err)
+	}
+	logger.Infof("[rmica] verifyContainerDir called for id=%s", id)
+	logger.Infof("[rmica] root=%s, state.json=%s", root, statePath)
+	defer stateFile.Close()
+	// recursively travel root dir and print like tree:
+	filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		logger.Infof("[rmica] %s", path)
+		return nil
+	})
 }
 
-
+// ==================== Runner Operations ====================
 // TODO: For compatibility, use runc libcontainer.CriuOpts as criuOpts.
+// LEARN: 后续参考 kata runtime 的思路
 func StartContainer(context *cli.Context, action defs.CtAct, criuOpts *libcontainer.CriuOpts) (int, error) {
 	if err := utils.RevisePidFile(context); err != nil {
 		return -1, err
 	}
 	spec, err := utils.SetupSpec(context)
 	if err != nil {
-		return -1, fmt.Errorf("failed to load spec: %w", err)
+		return -2, fmt.Errorf("failed to load spec: %w", err)
 	}
 
 	cntrId := context.Args().First()
 	if cntrId == "" {
-		return -1, utils.ErrEmptyID
+		return -3, utils.ErrEmptyID
 	}
 
 	// IDEA: StartContainer 进程（runc/rmica本身)与子进程（容器1号进程）进行通信同步；
-	// 而这个通信同步管理，混部的runtime部分需要承担多少? 
-	// NOTICE: 整合后，runtime部分就属于 mica daemon, 所以是同一个进程；
+	// 而这个通信同步管理，混部的runtime部分需要承担多少? ——哪些events需要通知？
+	// NOTICE: 整合后，runtime部分就属于 mica daemon, 所以是同一个进程；(****)
 	// rmica 本身会 wait for "ready" 或其他, 
-	// LEARN: 后续参考 kata runtime 的思路
 	notifySocket := newNotifySocket(context, os.Getenv("NOTIFY_SOCKET"), cntrId)
 	if notifySocket != nil {
+		// update ENV and Mount information to spec
+		// IDEA: does running mica client needs NOTIFY_SOCKET=... ENV and Mount information?
 		notifySocket.setupSpec(spec)
 	}
 
 	cntr, err := createContainer(context, cntrId, spec)
 	if err != nil {
-		return -1, fmt.Errorf("failed to create container: %w", err)
+		return -4, fmt.Errorf("failed to create container: %w", err)
 	}
 
 	if notifySocket != nil {
 		if err := notifySocket.setupSocketDirectory(); err != nil {
-			return -1, fmt.Errorf("failed to setup socket directory: %w", err)
+			return -5, fmt.Errorf("failed to setup socket directory: %w", err)
 		}
 		if action == defs.CT_ACT_RUN {
 			if err := notifySocket.bindSocket(); err != nil {
-				return -1, fmt.Errorf("failed to bind socket: %w", err)
+				return -6, fmt.Errorf("failed to bind socket: %w", err)
 			}
 		}
 	}
 
-	cp := &mcs.ClientTask{
+	ct := &mcs.ClientTask{
 		Terminal: false,
 		Name: "test",
 		Tty: "/dev/micatty",
@@ -606,102 +614,14 @@ func StartContainer(context *cli.Context, action defs.CtAct, criuOpts *libcontai
 		criuOpts: criuOpts,
 	}
 
-	// statePath := filepath.Join(cntr.StateDir(), constants.StateFilename)
-	// if err := os.MkdirAll(statePath, 0o700); err != nil {
-		// return -1, fmt.Errorf("failed to create container directory: %w", err)
-	// }
-	// stateFile, err := os.OpenFile(statePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
-
-	// state := &specs.State{
-	// 	Version:     spec.Version,
-	// 	ID:          cntrId,
-	// 	Status:      specs.StateCreating,
-	// 	Bundle:      context.String("bundle"),
-	// 	Annotations: spec.Annotations,
-	// }
-
-	// if err := utils.WriteJSON(stateFile, state); err != nil {
-	// 	return -1, fmt.Errorf("failed to write state file: %w", err)
-	// }
-
-	// if _, err := Load(root, cntrId); err != nil {
-	// 	return -1, fmt.Errorf("failed to verify container instance: %w", err)
-	// }
-
 	if pidFile := context.String("pid-file"); pidFile != "" {
 		if err := utils.CreatePidFile(pidFile, os.Getpid()); err != nil {
-			return -1, fmt.Errorf("failed to create pid file: %w", err)
+			return -7, fmt.Errorf("failed to create pid file: %w", err)
 		}
 	}
 
-	return r.runTask(cp)
+	return r.runTask(ct)
 }
-
-func Load(root, id string) (*Container, error) {
-	containerDir := filepath.Join(root, id)
-	if _, err := os.Stat(containerDir); err != nil {
-		return nil, fmt.Errorf("container %s not found: %w", id, err)
-	}
-
-	return &Container{
-		id:   id,
-		root: root,
-		state: &StoppedState{},
-	}, nil
-}
-
-// NOTICE Parameter config should be expanded
-func Create(root, id string, config *specs.Spec) (*Container, error) {
-	if root == "" {
-		return nil, errors.New("root is empty")
-	}
-
-	if err := utils.ValidateID(id); err != nil {
-		return nil, err
-	}
-
-	if err := utils.ValidateSpec(config); err != nil {
-		return nil, err
-	}
-
-	if err := utils.ValidateTaskSpec(config); err != nil {
-		return nil, err
-	}
-
-	if err := os.MkdirAll(root, 0o700); err != nil {
-		return nil, fmt.Errorf("failed to create root dir: %s; %w", root, err)
-	}
-
-	stateDir, err := securejoin.SecureJoin(root, id)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create state directory: %s; %w", stateDir, err)
-	}
-
-	if _, err := os.Stat(stateDir); err == nil {
-		return nil, utils.ErrExist
-	} else if !os.IsNotExist(err) {
-		return nil, fmt.Errorf("failed to stat state directory: %s; %w", stateDir, err)
-	}
-
-	if err := os.Mkdir(stateDir, 0o711); err != nil {
-		return nil, fmt.Errorf("failed to create state directory for parent: %s; %w", stateDir, err)
-	}
-
-	// TODO: create network namespace 
-
-	if err := os.Mkdir(stateDir, 0o711); err != nil {
-		return nil, fmt.Errorf("failed to create state directory: %s; %w", stateDir, err)
-	}
-	// TODO: Members initialization.
-	cntr := &Container{
-		id: id,
-		root: root,
-		config: config,
-	}
-	cntr.state = &StoppedState{c: cntr}
-	return cntr, nil
-}
-
 
 // IDEA: what do we need to run a task?
 // TODO: update ClientProcess
@@ -722,7 +642,6 @@ func (r *runner) runTask(taskConfig *mcs.ClientTask) (int, error) {
 	// task, err := newTaskFromConfig(taskConfig)
 	logger.Infof("[rmica] runTask called for id=%s", r.container.Id())
 	
-
 	switch r.action {
 	case defs.CT_ACT_RUN:
 		err = r.container.Run()
@@ -735,29 +654,6 @@ func (r *runner) runTask(taskConfig *mcs.ClientTask) (int, error) {
 	verifyContainerDir(r.container)
 
 	return 0, err
-}
-
-func verifyContainerDir(container *Container) {
-	root := container.Root()
-	id := container.Id()
-	statePath := filepath.Join(container.StateDir(), defs.StateFilename)
-	stateFile, err := os.OpenFile(statePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
-	if err != nil {
-		logger.Errorf(
-			"[rmica] verifyContainerDir: failed to open state file %s id=%s: %v", 
-			statePath, id, err)
-	}
-  logger.Infof("[rmica] verifyContainerDir called for id=%s", id)
-	logger.Infof("[rmica] root=%s, state.json=%s", root, statePath)
-	defer stateFile.Close()
-	// recursively travel root dir and print like tree:
-	filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		logger.Infof("[rmica] %s", path)
-		return nil
-	})
 }
 
 func (r *runner) destroy() {
@@ -783,9 +679,79 @@ func (r *runner) checkTerminal(taskConfig *mcs.ClientTask) error {
 	return nil
 }
 
-
 // NOTICE: in runc, newTaskFromConfig() converts spec to 
 // but in rmica, it is just a dummy
 func newTaskFromConfig(taskConfig *mcs.ClientTask) (*mcs.ClientTask, error) {
 	return taskConfig, nil
+}
+
+// ==================== Container Utilities ====================
+
+func createContainer(context *cli.Context, id string, spec *specs.Spec) (*Container, error) {
+	return Create(context.GlobalString("root"), id, spec)
+}
+
+func Load(root, id string) (*Container, error) {
+	containerDir := filepath.Join(root, id)
+	if _, err := os.Stat(containerDir); err != nil {
+		return nil, fmt.Errorf("container %s not found: %w", id, err)
+	}
+
+	return &Container{
+		id:   id,
+		root: root,
+		state: &StoppedState{},
+	}, nil
+}
+
+// NOTICE We create state dir in host for container engine
+func Create(root, id string, config *specs.Spec) (*Container, error) {
+	if root == "" {
+		return nil, errors.New("root is empty")
+	}
+
+	if err := utils.ValidateID(id); err != nil {
+		return nil, err
+	}
+
+	if err := utils.ValidateSpec(config); err != nil {
+		return nil, err
+	}
+
+	if err := utils.ValidateTaskSpec(config); err != nil {
+		return nil, err
+	}
+
+
+	if err := os.MkdirAll(root, 0o711); err != nil {
+		// return nil, utils.DebugPrintf("failed to create root dir: %s; %w", root, err)
+		return nil, fmt.Errorf("failed to create root dir: %s; %w", root, err)
+	}
+
+	stateDir, err := securejoin.SecureJoin(root, id)
+	if err != nil {
+		// return nil, utils.DebugPrintf("failed to create state directory: %s; %w", stateDir, err)
+		return nil, fmt.Errorf("failed to create state directory: %s; %w", stateDir, err)
+	}
+
+	if _, err := os.Stat(stateDir); err == nil {
+		return nil, utils.ErrExist
+	} else if !os.IsNotExist(err) {
+		return nil, fmt.Errorf("failed to stat state directory: %s; %w", stateDir, err)
+	}
+
+	if err := os.Mkdir(stateDir, 0o711); err != nil {
+		return nil, fmt.Errorf("failed to create state directory for parent: %s; %w", stateDir, err)
+	}
+
+	// TODO: create network namespace 
+
+	// TODO: Members initialization.
+	cntr := &Container{
+		id: id,
+		root: root,
+		config: config,
+	}
+	cntr.state = &StoppedState{c: cntr}
+	return cntr, nil
 }

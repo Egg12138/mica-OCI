@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"runtime"
+	"time"
 
 	"os"
 	"path/filepath"
@@ -21,7 +23,60 @@ const (
 	ExactArgs = iota
 	MinArgs
 	MaxArgs
+	debugFileName = "/var/log/rmica.log"
 )
+
+
+
+func CleanDebugFile() error {
+	f, err := os.OpenFile(debugFileName, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	timestamp := time.Now().Format("2006-01-02 15:04:05")
+	_, err = fmt.Fprintf(f, "%s\n", timestamp)
+	return err
+}
+
+func getDebugInfoPrefix() string {
+	var prefix = ""
+	pc_parent, _, _, ok := runtime.Caller(3)
+	if ok {
+		fullFuncName := runtime.FuncForPC(pc_parent).Name()
+		funcName := filepath.Base(fullFuncName)
+		prefix += fmt.Sprintf("%s-> ", funcName)
+	}
+	pc, _, _, ok := runtime.Caller(2)
+	if ok {
+		var caller string
+		fullFuncName := runtime.FuncForPC(pc).Name()
+		file, line := runtime.FuncForPC(pc).FileLine(pc)
+		file = filepath.Base(file)
+		caller = fullFuncName
+		prefix += fmt.Sprintf("[%s:%d] %s \n\t", file, line, caller)
+	}
+	return prefix
+}
+
+func DebugPrintf(format string, args ...interface{}) error {
+	if _, err := os.Stat(debugFileName); os.IsNotExist(err) {
+		if err := CleanDebugFile(); err != nil {
+			return err
+		}
+	}
+
+	f, err := os.OpenFile(debugFileName, os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	prefix := getDebugInfoPrefix()	
+	_, err = fmt.Fprintf(f, prefix + format+"\n", args...)
+	return err
+}
 
 func CheckArgs(context *cli.Context, expected int, typ int) error {
 	var err error
@@ -94,6 +149,8 @@ func SetupSpec(context *cli.Context) (*specs.Spec, error) {
 	return spec, nil
 }
 
+// NOTICE: bundle内应该包含了 适配 clientRTOS运行 的 二进制 
+// IDEA: 让mica监控RTOS上的task process
 func LoadSpec(cPath string) (spec *specs.Spec, err error) {
 	cf, err := os.Open(cPath)
 	if err != nil {
@@ -169,14 +226,12 @@ func SetupIO() (*tty, error) {
 }
 
 
-
 // Revise the value of flag "pid-file" to the absolute path.
 func RevisePidFile(context *cli.Context) error {
 	pidFile := context.GlobalString("pid-file")
 	if pidFile == "" {
-		return errors.New("--pid-file is required")
+		return nil
 	}
-
 	pidFile, err := filepath.Abs(pidFile)
 	if err != nil {
 		return err

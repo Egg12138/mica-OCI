@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"rmica/logger"
 	"runtime"
 	"strconv"
 	"strings"
@@ -24,7 +25,7 @@ type FatalWriter struct {
 }
 
 func (f *FatalWriter) Write(p []byte) (n int, err error) {
-	logrus.Error(string(p))
+	logger.Error(string(p))
 	if !logrusToStderr() {
 		return f.cliErrWriter.Write(p)
 	}

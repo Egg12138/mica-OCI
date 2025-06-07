@@ -130,4 +130,12 @@ func Fatalf(format string, args ...interface{}) {
 
 func Panicf(format string, args ...interface{}) {
 	Log.Panicf(format, args...)
-} 
+}
+
+// FatalWithCleanup logs a fatal error and executes cleanup function before exiting
+func FatalWithCleanup(cleanup func(), args ...interface{}) {
+	if cleanup != nil {
+		cleanup()
+	}
+	Log.Fatal(args...)
+}

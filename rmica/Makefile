@@ -23,6 +23,7 @@ endif
 
 # RUN_OPTS depends on R
 RUN_OPTS ?= --runtime=$(R) --network=none
+CREATE_OPTS ?= --runtime=$(R)
 
 ifeq ($(K),)
 RUN_OPTS := $(RUN_OPTS) --rm
@@ -69,7 +70,11 @@ endif
 	$(DCKR) run $(RUN_OPTS) --name $(CNTR_NAME) $(IMG)
 
 create: build
-	$(DCKR) create $(RUN_OPTS) --name $(CNTR_NAME) $(IMG)
+	@suffix=$$(openssl rand -hex 4); \
+	$(DCKR) create $(CREATE_OPTS) --name $(IMG)_container_$$suffix $(IMG); \
+	echo "$(DCKR) create $(CREATE_OPTS) --name $(IMG)_container_$$suffix $(IMG)"
+
+
 
 delete_all:
 	@echo "removing $(IMG) container instances"

@@ -13,11 +13,12 @@ import (
 
 // FIXME: create network namespace which is required by moby!
 func CreateAction(context *cli.Context) error {
-
+	utils.CleanDebugFile()
 	if err := utils.CheckArgs(context, 1, utils.ExactArgs); err != nil {
 		return err
 	}
 	status, err := pseudo_container.StartContainer(context, defs.CT_ACT_CREATE, nil)
+	utils.DebugPrintf("status = %d", status)
 	if err == nil {
 		os.Exit(status)
 	}
@@ -53,6 +54,10 @@ filesystem.`,
 			Name:  "pid-file",
 			Value: "",
 			Usage: "specify the file to write the process id to",
+		},
+		cli.BoolFlag{
+			Name:  "no-pivot",
+			Usage: "do not use pivot root to jail process inside rootfs.  This should be used whenever the rootfs is on top of a ramdisk",
 		},
 	},
 
