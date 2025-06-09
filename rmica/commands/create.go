@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"rmica/defs"
+	"rmica/logger"
 	"rmica/utils"
 
 	pseudo_container "rmica/pseudo-container"
@@ -13,12 +14,12 @@ import (
 
 // FIXME: create network namespace which is required by moby!
 func CreateAction(context *cli.Context) error {
-	utils.CleanDebugFile()
 	if err := utils.CheckArgs(context, 1, utils.ExactArgs); err != nil {
 		return err
 	}
 	status, err := pseudo_container.StartContainer(context, defs.CT_ACT_CREATE, nil)
-	utils.DebugPrintf("status = %d", status)
+	logger.Debugf("status = %d", status)
+	logger.Fprintf("status = %d", status)
 	if err == nil {
 		os.Exit(status)
 	}

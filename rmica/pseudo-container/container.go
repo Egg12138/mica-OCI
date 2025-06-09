@@ -20,6 +20,7 @@ import (
 	"github.com/opencontainers/runc/libcontainer"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/urfave/cli"
+	"golang.org/x/sys/unix"
 
 	securejoin "github.com/cyphar/filepath-securejoin"
 )
@@ -34,7 +35,7 @@ type Container struct {
 	// stateDir string
 	// Use specs-go::Spec, State to represent, following OCI-spec
 	config  *specs.Spec
-	state   ContainerState
+	cstate   ContainerState
 	initPid int
 	created time.Time
 	m 			sync.Mutex
@@ -77,7 +78,7 @@ func (c *Container) StateDir() string {
 func (c *Container) Status() specs.ContainerState {
 	c.m.Lock()
 	defer c.m.Unlock()
-	return c.state.status()
+	return c.cstate.status()
 	// return specs.StateCreating
 }
 
@@ -88,7 +89,7 @@ func (c *Container) State() specs.State {
 	state := specs.State{
 		Version:     specs.Version,
 		ID:          c.Id(),
-		Status:      c.state.status(),
+		Status:      c.cstate.status(),
 		Pid:         c.initPid,
 		Bundle:      c.Root(),
 		Annotations: c.config.Annotations,
@@ -170,30 +171,24 @@ func (c *Container) Init() error {
 func (c *Container) Start() error {
 	c.m.Lock()
 	defer c.m.Unlock()
-	// return c.state.transition(&RunningState{c: c})
+	logger.Infof("[pseudo-container] start called for id=%s, status = %s", c.id, c.cstate.status())
+	// return c.fakeStart()
 	return c.start()
 }
 
 func (c *Container) fakeStart() error {
-	c.m.Lock()
-	defer c.m.Unlock()
 	logger.Infof("[pseudo-container] start called for id=%s", c.id)
   return nil
 }
 
 func (c *Container) start() error {
-	c.m.Lock()
-	defer c.m.Unlock()
 
-	// 合法性检查：如 exec fifo 创建
-	if err := c.createExecFifo(defs.ExecFifoFilename); err != nil {
-		return fmt.Errorf("failed to create exec fifo: %w", err)
-	}
+	logger.Debugf("createExecFifo for id=%s", c.id)
+	// if err := c.createExecFifo(defs.ExecFifoFilename); err != nil {
+	// 	return fmt.Errorf("failed to create exec fifo: %w", err)
+	// }
 
-	// 可以添加更多合法性检查，如状态检查等
-	// if c.Status() != specs.StateCreated { ... }
 
-	// 序列化请求并转发到 micad
 	res := communication.Send2mica("start")
 	if res == "" {
 		return fmt.Errorf("failed to send start to micad or got empty response")
@@ -305,17 +300,44 @@ func (c *Container) restore() error {
 func (c *Container) Destroy() error {
 	c.m.Lock()
 	defer c.m.Unlock()
-	return c.destroy()
+	if err := c.cstate.destroy(); err != nil {
+		logger.Fprintf("unable to destroy container[%s]: %w", c.cstate.status(), err)
+		logger.Debugf("unable to destroy container[%s]", c.cstate.status())
+		return fmt.Errorf("unable to destroy container: %w", err)
+	}
+	return nil
 }
 
-func (c *Container) destroy() error {
-	logger.Infof("[container] destroy called for id=%s", c.id)
-	res := communication.Send2mica("destroy")
-	if res == "" {
-		logger.Errorf("[container] destroy failed for id=%s: empty response from micad", c.id)
-		return fmt.Errorf("failed to send destroy to micad or got empty response")
+// func (c *Container) destroy() error {
+// 	logger.Infof("[container] destroy called for id=%s", c.id)
+// 	res := communication.Send2micaCmd("destroy")
+// 	if res == "" {
+// 		logger.Errorf("[container] destroy failed for id=%s: empty response from micad", c.id)
+// 		return fmt.Errorf("failed to send destroy to micad or got empty response")
+// 	}
+// 	logger.Infof("[container] destroy succeeded for id=%s, response=%s", c.id, res)
+// 	return nil
+// }
+
+// TODO: Analyse mica signal handling; currently we just wrap the signal to mica
+func (c *Container) Signal(sig os.Signal, target mcs.ClientTask) error {
+	c.m.Lock()
+	defer c.m.Unlock()
+	// TODO: after the communication is established, send the wrapped-signal to micad
+	return c.signal(sig, target.Name)
+}
+
+func (c *Container) signal(sig os.Signal, target string) error {
+	if sig == unix.SIGKILL {
+		res := communication.Send2micaCmd("stop", target)
+		logger.Debugf("%s <-- mica , for stop %s", res, target)
+		res = communication.Send2micaCmd("rm", target)
+		logger.Debugf("%s <-- mica , for rm %s", res, target)
+	} else {
+		logger.Fprintf("signal %s has not supported yet", sig)
+		logger.Debugf("signal %s has not supported yet", sig)
+		return utils.ErrNotImplemented
 	}
-	logger.Infof("[container] destroy succeeded for id=%s, response=%s", c.id, res)
 	return nil
 }
 
@@ -417,6 +439,13 @@ type notifySocket struct {
 	socketPath string
 }
 
+func (n *notifySocket) Members() (string, string) {
+	if n == nil {
+		return "", ""
+	}
+	return n.host, n.socketPath
+}
+
 func newNotifySocket(context *cli.Context, notifySocketHost string, id string) *notifySocket {
 	// Basically, notifier does not matter. Hence we just return when host is empty.
 	if notifySocketHost == "" {
@@ -474,6 +503,7 @@ func (s *notifySocket) bindSocket() error {
 }
 
 func (s *notifySocket) setupSocketDirectory() error {
+	logger.Fprintf("seting up socket directory : %s", s.socketPath)
 	return os.Mkdir(path.Dir(s.socketPath), 0o755)
 }
 
@@ -540,8 +570,10 @@ func verifyContainerDir(container *Container) {
 			"[rmica] verifyContainerDir: failed to open state file %s id=%s: %v", 
 			statePath, id, err)
 	}
-	logger.Infof("[rmica] verifyContainerDir called for id=%s", id)
-	logger.Infof("[rmica] root=%s, state.json=%s", root, statePath)
+	logger.Debugf("[rmica] travelly called for id=%s", id)
+	logger.Debugf("[rmica] root=%s, state.json=%s", root, statePath)
+	logger.Fprintf("travelly called for id=%s", id)
+	logger.Fprintf("root=%s, state.json=%s", root, statePath)
 	defer stateFile.Close()
 	// recursively travel root dir and print like tree:
 	filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
@@ -569,7 +601,7 @@ func StartContainer(context *cli.Context, action defs.CtAct, criuOpts *libcontai
 	if cntrId == "" {
 		return -3, utils.ErrEmptyID
 	}
-
+	logger.Fprintf("container <%s>", cntrId)
 	// IDEA: StartContainer 进程（runc/rmica本身)与子进程（容器1号进程）进行通信同步；
 	// 而这个通信同步管理，混部的runtime部分需要承担多少? ——哪些events需要通知？
 	// NOTICE: 整合后，runtime部分就属于 mica daemon, 所以是同一个进程；(****)
@@ -580,18 +612,32 @@ func StartContainer(context *cli.Context, action defs.CtAct, criuOpts *libcontai
 		// IDEA: does running mica client needs NOTIFY_SOCKET=... ENV and Mount information?
 		notifySocket.setupSpec(spec)
 	}
-
+	
 	cntr, err := createContainer(context, cntrId, spec)
 	if err != nil {
+		logger.Fprintf("failed to create container: %v", err)
+		logger.Errorf("failed to create container: %v", err)
 		return -4, fmt.Errorf("failed to create container: %w", err)
 	}
+	logger.Debugf("setup notify socket dir: %v", notifySocket)
+	host, spath := notifySocket.Members()
+		logger.Debugf(`
+		"host": "%s",
+		"socketPath": "%s"
+		}`, host, spath)
+		logger.Fprintf(`{ 
+		"host": "%s",
+		"socketPath": "%s"
+	}`, host, spath)
 
 	if notifySocket != nil {
 		if err := notifySocket.setupSocketDirectory(); err != nil {
+			logger.Fprintf("failed to setup socket directory: %w", err)
 			return -5, fmt.Errorf("failed to setup socket directory: %w", err)
 		}
 		if action == defs.CT_ACT_RUN {
 			if err := notifySocket.bindSocket(); err != nil {
+				logger.Fprintf("failed to bind socket: %w", err)
 				return -6, fmt.Errorf("failed to bind socket: %w", err)
 			}
 		}
@@ -613,6 +659,9 @@ func StartContainer(context *cli.Context, action defs.CtAct, criuOpts *libcontai
 		notifySocket: notifySocket,
 		criuOpts: criuOpts,
 	}
+
+	logger.Fprintf("runner = %v", r)
+	logger.Debugf("runner = %v", r)
 
 	if pidFile := context.String("pid-file"); pidFile != "" {
 		if err := utils.CreatePidFile(pidFile, os.Getpid()); err != nil {
@@ -641,16 +690,25 @@ func (r *runner) runTask(taskConfig *mcs.ClientTask) (int, error) {
 
 	// task, err := newTaskFromConfig(taskConfig)
 	logger.Infof("[rmica] runTask called for id=%s", r.container.Id())
+	logger.Fprintf("runtask for id=%s, task = %v", r.container.Id(), taskConfig)
 	
+	var caller = func() error {return nil}
+	callerName := ""
 	switch r.action {
 	case defs.CT_ACT_RUN:
-		err = r.container.Run()
+		caller = r.container.Run
+		callerName = "Run"
 	case defs.CT_ACT_CREATE:
-		err = r.container.Start()
+		caller = r.container.Start
+		callerName = "Start"
 	case defs.CT_ACT_RESTORE:
-		err = r.container.Restore()
+		caller = r.container.Restore
+		callerName = "Restore"
 	}
 	
+	logger.Fprintf("caller = %v, action = %s", caller, callerName)
+	err = caller()
+	logger.Fprintf("caller = %v", caller)
 	verifyContainerDir(r.container)
 
 	return 0, err
@@ -700,7 +758,7 @@ func Load(root, id string) (*Container, error) {
 	return &Container{
 		id:   id,
 		root: root,
-		state: &StoppedState{},
+		cstate: &StoppedState{},
 	}, nil
 }
 
@@ -724,17 +782,20 @@ func Create(root, id string, config *specs.Spec) (*Container, error) {
 
 
 	if err := os.MkdirAll(root, 0o711); err != nil {
-		// return nil, utils.DebugPrintf("failed to create root dir: %s; %w", root, err)
+		// return nil, logger.DebugPrintf("failed to create root dir: %s; %w", root, err)
 		return nil, fmt.Errorf("failed to create root dir: %s; %w", root, err)
 	}
 
 	stateDir, err := securejoin.SecureJoin(root, id)
 	if err != nil {
-		// return nil, utils.DebugPrintf("failed to create state directory: %s; %w", stateDir, err)
-		return nil, fmt.Errorf("failed to create state directory: %s; %w", stateDir, err)
+		logger.Fprintf("failed to join the state directory:  %w", err)
+		return nil, fmt.Errorf("failed to join the state directory:  %w", err)
 	}
 
+	// `stat` returning ok means the dir has been created
 	if _, err := os.Stat(stateDir); err == nil {
+		logger.Fprintf("stateDir %s already exist", stateDir)
+		logger.Debugf("stateDir %s already exist", stateDir)
 		return nil, utils.ErrExist
 	} else if !os.IsNotExist(err) {
 		return nil, fmt.Errorf("failed to stat state directory: %s; %w", stateDir, err)
@@ -744,6 +805,9 @@ func Create(root, id string, config *specs.Spec) (*Container, error) {
 		return nil, fmt.Errorf("failed to create state directory for parent: %s; %w", stateDir, err)
 	}
 
+	logger.Fprintf("stateDir %s created; container %v", stateDir)
+	logger.Debugf("stateDir %s created; container %v", stateDir)
+
 	// TODO: create network namespace 
 
 	// TODO: Members initialization.
@@ -752,6 +816,8 @@ func Create(root, id string, config *specs.Spec) (*Container, error) {
 		root: root,
 		config: config,
 	}
-	cntr.state = &StoppedState{c: cntr}
+	cntr.cstate = &StoppedState{c: cntr}
+	logger.Fprintf("container %v created", cntr)
+	logger.Debugf("container %v created", cntr)
 	return cntr, nil
 }

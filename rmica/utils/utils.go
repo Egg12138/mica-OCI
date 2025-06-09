@@ -5,14 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"runtime"
-	"time"
+	"strings"
 
 	"os"
 	"path/filepath"
 	"strconv"
 
 	"rmica/defs"
+	"rmica/logger"
+	"rmica/mcs"
 
 	"github.com/opencontainers/runc/libcontainer/utils"
 	"github.com/opencontainers/runtime-spec/specs-go"
@@ -23,60 +24,10 @@ const (
 	ExactArgs = iota
 	MinArgs
 	MaxArgs
-	debugFileName = "/var/log/rmica.log"
 )
 
 
 
-func CleanDebugFile() error {
-	f, err := os.OpenFile(debugFileName, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	timestamp := time.Now().Format("2006-01-02 15:04:05")
-	_, err = fmt.Fprintf(f, "%s\n", timestamp)
-	return err
-}
-
-func getDebugInfoPrefix() string {
-	var prefix = ""
-	pc_parent, _, _, ok := runtime.Caller(3)
-	if ok {
-		fullFuncName := runtime.FuncForPC(pc_parent).Name()
-		funcName := filepath.Base(fullFuncName)
-		prefix += fmt.Sprintf("%s-> ", funcName)
-	}
-	pc, _, _, ok := runtime.Caller(2)
-	if ok {
-		var caller string
-		fullFuncName := runtime.FuncForPC(pc).Name()
-		file, line := runtime.FuncForPC(pc).FileLine(pc)
-		file = filepath.Base(file)
-		caller = fullFuncName
-		prefix += fmt.Sprintf("[%s:%d] %s \n\t", file, line, caller)
-	}
-	return prefix
-}
-
-func DebugPrintf(format string, args ...interface{}) error {
-	if _, err := os.Stat(debugFileName); os.IsNotExist(err) {
-		if err := CleanDebugFile(); err != nil {
-			return err
-		}
-	}
-
-	f, err := os.OpenFile(debugFileName, os.O_APPEND|os.O_WRONLY, 0644)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	prefix := getDebugInfoPrefix()	
-	_, err = fmt.Fprintf(f, prefix + format+"\n", args...)
-	return err
-}
 
 func CheckArgs(context *cli.Context, expected int, typ int) error {
 	var err error
@@ -103,6 +54,15 @@ func GetRootDir(context *cli.Context) string {
 		root = "/run/rmica"
 	}
 	return root
+}
+
+func GetMicaTaskConfig() *mcs.ClientTask {
+	ct4Test := &mcs.ClientTask{
+		Name: "test",
+		Terminal: true,
+		Tty: "/dev/micatty",
+	}
+	return ct4Test
 }
 
 // WriteJSON writes the provided struct v to w using standard json marshaling
@@ -150,6 +110,16 @@ func SetupSpec(context *cli.Context) (*specs.Spec, error) {
 }
 
 // NOTICE: bundle内应该包含了 适配 clientRTOS运行 的 二进制 
+// NOTICE: add client task information to `annotations` field in OCI spec (config.json)
+// NOTICE: 
+// for example, 
+// "annotations": {
+// 	"org.openeuler.mica.client.os": "zephyr",
+// 	"org.openeuler.mica.client.firmware": "/lib/firmware/zephyr.elf",
+// 	"org.openeuler.mica.client.name": "test",
+// 	"org.openeuler.mica.client.task.inclient_path": "/usr/bin/hello",
+// }
+// IDEA: what's more, adding information to Image Manifest is needed??? 
 // IDEA: 让mica监控RTOS上的task process
 func LoadSpec(cPath string) (spec *specs.Spec, err error) {
 	cf, err := os.Open(cPath)
@@ -171,8 +141,23 @@ func LoadSpec(cPath string) (spec *specs.Spec, err error) {
 	return spec, ValidateTaskSpec(spec)
 }
 
+
 // TODO: Client task
+// TODO: a set of mica annotations must contains (basenames) 
+// {client.os, client.firmware, client.name, client.CPU, //client.entry --> task.path
+// task.path, task.args, task.envs, 
+// entry.user, ...?}
 func ValidateTaskSpec(spec *specs.Spec) error {
+	annotations := spec.Annotations
+	if annotations != nil {
+		for k, v := range annotations {
+			if startWithMicaPrefix(k) {
+				// expected format: <Category>.<item>
+				item := annotationMicaItems(k)
+				logger.Fprintf("caught %s:%s", item, v)
+			}
+		}
+	}
 	return nil
 }
 
@@ -267,3 +252,21 @@ func ReviseRootDir(context *cli.Context) error {
 
 	return context.GlobalSet("root", root)
 }
+
+
+func startWithMicaPrefix(fieldName string) bool {
+	if strings.HasPrefix(fieldName, defs.MicaAnnotationPrefix) {
+		return true
+	} else {
+		return false
+	}
+}
+
+func stripPrefixUnsafe(str string, prefix string) string {
+	return strings.TrimPrefix(str, prefix)
+}
+
+func annotationMicaItems(fieldName string) string {
+	return stripPrefixUnsafe(fieldName, defs.MicaAnnotationPrefix)
+}
+

@@ -8,6 +8,7 @@ import (
 	"github.com/opencontainers/runc/libcontainer/specconv"
 	"github.com/urfave/cli"
 
+	"rmica/logger"
 	"rmica/utils"
 )
 
@@ -29,6 +30,7 @@ func SpecAction(context *cli.Context) error {
 	if err := utils.CheckArgs(context, 0, utils.ExactArgs); err != nil {
 		return err
 	}
+	logger.Fprintf("generating spec file from spec Example template()")
 	spec := specconv.Example()
 
 	rootless := context.Bool("rootless")

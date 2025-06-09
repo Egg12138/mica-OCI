@@ -7,7 +7,6 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
 	"rmica/commands"
@@ -33,11 +32,14 @@ func printVersion(c *cli.Context) {
 }
 
 func main() {
+	if err := logger.Fprintf("---------debug rmica file enabled"); err != nil {
+		logger.Errorf("error to start debug printf utils: %s", err)
+		os.Exit(114)
+	}
 	app := cli.NewApp()
 	app.Name = defs.RuntimeName
 	app.Usage = defs.Usage
 	app.Version = strings.TrimSpace(version) + extraVersion
-
 	cli.VersionPrinter = printVersion
 
 	app.Flags = []cli.Flag{
@@ -48,7 +50,7 @@ func main() {
 		},
 		cli.BoolFlag{
 			Name:  "debug",
-			Usage: "enable debug output",
+			Usage: "enable debug output and flesh the debug file: " + defs.DefaultLogFile,
 		},
 		cli.StringFlag{
 			Name:  "log",
@@ -71,6 +73,7 @@ func main() {
 		},
 	}
 
+	logger.CleanDebugFile()
 	app.Commands = []cli.Command{
 		// Required by OCI specifications
 		commands.CreateCommand,
@@ -84,25 +87,32 @@ func main() {
 		// Extenstions
 	}
 
+
+	// Only executed for subcommands
 	app.Before = func(context *cli.Context) error {
 		if err := utils.ReviseRootDir(context); err != nil {
 			return err
 		}
 
-		if err := configLogrus(context); err != nil {
-			return err
+		// Initialize logger with CLI flags
+		err := logger.Init(&logger.Config{
+			Level:  "info",
+			Format: context.GlobalString("log-format"),
+			Output: context.GlobalString("log"),
+			Debug:  context.GlobalBool("debug"),
+		})
+		if err != nil {
+			return fmt.Errorf("failed to configure logger: %v", err)
 		}
 
-		if context.Bool("debug") {
-			logrus.Debug("Debug mode enabled")
-		}
+		logger.CleanDebugFile()
+		logger.Debug("Debug mode enabled")
 
 		return nil
 	}
 
 	cli.ErrWriter = &FatalWriter{cli.ErrWriter}
 	if err := app.Run(os.Args); err != nil {
-		// fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		logger.Errorf("error: %v", err)
 		os.Exit(1)
 	}

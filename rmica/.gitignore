@@ -4,6 +4,10 @@
 *.so
 *.dylib
 
+*.json
+!config.json
+
+
 *.test
 *.out
 
@@ -36,11 +40,15 @@ dist/
 *.out
 
 /vendor/
+/blobs
+/rootfs
+
 
 go.work
 
 debug
 debug.test
+tests
 
 *.cover
 coverage.txt 

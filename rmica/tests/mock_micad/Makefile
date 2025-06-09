@@ -11,7 +11,8 @@ OBJS = $(SRCS:.c=.o)
 all: $(TARGET)
 
 simple: CFLAGS += -DSIMPLE_MODE
-simple: $(TARGET)
+simple: $(OBJS)
+	$(CC) $(OBJS) -o simple-$(TARGET) $(LDFLAGS)
 
 $(TARGET): $(OBJS)
 	$(CC) $(OBJS) -o $(TARGET) $(LDFLAGS)

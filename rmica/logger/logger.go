@@ -2,19 +2,33 @@
 package logger
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"rmica/defs"
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/sirupsen/logrus"
 )
+
+const debugFileName = defs.DefaultLogFile
 
 var (
 	// Log is the global logger instance
 	Log = logrus.New()
 )
+
+	// Set default configuration for systemd compatibility
+func init() {
+	Log.SetOutput(os.Stderr)
+	Log.SetFormatter(&logrus.TextFormatter{
+		FullTimestamp:   true,
+		TimestampFormat: "01-02 15:04:05",
+	})
+}
 
 // Config represents the logger configuration
 type Config struct {
@@ -22,28 +36,32 @@ type Config struct {
 	Level string
 	// Format is the log format (text or json)
 	Format string
-	// Output is the log output file path
+	// Output is the log output file path (if empty, uses stderr)
 	Output string
 	// Debug enables debug mode
 	Debug bool
 }
 
 func Init(config *Config) error {
-	level, err := logrus.ParseLevel(config.Level)
-	if err != nil {
-		return err
+	if config == nil {
+		return nil 
 	}
-	Log.SetLevel(level)
+
+	if config.Level != "" {
+		level, err := logrus.ParseLevel(config.Level)
+		if err != nil {
+			return err
+		}
+		Log.SetLevel(level)
+	}
 
 	switch config.Format {
 	case "json":
 		Log.SetFormatter(&logrus.JSONFormatter{})
-	case "text":
-		fallthrough
-	default:
+	case "text", "":
 		Log.SetFormatter(&logrus.TextFormatter{
 			FullTimestamp:   true,
-			TimestampFormat: "2025-01-01 11:11:11",
+			TimestampFormat: "01-02 15:04:05",
 		})
 	}
 
@@ -56,10 +74,12 @@ func Init(config *Config) error {
 	}
 
 	if config.Debug {
+		Log.SetLevel(logrus.DebugLevel)
 		Log.SetReportCaller(true)
 		Log.SetFormatter(&logrus.TextFormatter{
+			FullTimestamp:   true,
+			TimestampFormat: "01-02 15:04:05",
 			CallerPrettyfier: func(f *runtime.Frame) (string, string) {
-				// Get the package name
 				_, file, _, _ := runtime.Caller(0)
 				prefix := filepath.Dir(file) + "/"
 				function := strings.TrimPrefix(f.Function, prefix) + "()"
@@ -109,7 +129,7 @@ func Panic(args ...interface{}) {
 }
 
 func Debugf(format string, args ...interface{}) {
-	Log.Debugf(format, args...)
+	Log.Debugf("* " + format + "\n", args...)
 }
 
 func Infof(format string, args ...interface{}) {
@@ -138,4 +158,58 @@ func FatalWithCleanup(cleanup func(), args ...interface{}) {
 		cleanup()
 	}
 	Log.Fatal(args...)
+}
+
+
+func CleanDebugFile() error {
+	f, err := os.OpenFile(debugFileName, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	timestamp := time.Now().Format("2006-01-02 15:04:05")
+	_, err = fmt.Fprintf(f, "%s\n", timestamp)
+	return err
+}
+
+func getDebugInfoPrefix() string {
+	var prefix = ""
+	pc_parent, _, _, ok := runtime.Caller(3)
+	if ok {
+		fullFuncName := runtime.FuncForPC(pc_parent).Name()
+		funcName := filepath.Base(fullFuncName)
+		prefix += fmt.Sprintf("%s-> ", funcName)
+	}
+	pc, _, _, ok := runtime.Caller(2)
+	if ok {
+		var caller string
+		fullFuncName := runtime.FuncForPC(pc).Name()
+		// Add green color to the function name
+		file, line := runtime.FuncForPC(pc).FileLine(pc)
+		file = filepath.Base(file)
+		// Add yellow to the line number, and print the ascii color codes here :
+		caller = fullFuncName
+		caller = "\033[32m" + caller + "\033[0m"
+		prefix += fmt.Sprintf("[\033[33m%s:%d\033[0m] %s \n\t", file, line, caller)
+	}
+	return prefix
+}
+
+func Fprintf(format string, args ...interface{}) error {
+	if _, err := os.Stat(debugFileName); os.IsNotExist(err) {
+		if err := CleanDebugFile(); err != nil {
+			return err
+		}
+	}
+
+	f, err := os.OpenFile(debugFileName, os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	prefix := getDebugInfoPrefix()	
+	_, err = fmt.Fprintf(f, prefix + format+"\n", args...)
+	return err
 }

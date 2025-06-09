@@ -22,6 +22,9 @@
 #define RESPONSE_SUCCESS "MICA-SUCCESS\n"
 #define RESPONSE_FAILED "MICA-FAILED\n"
 
+/* Function prototypes */
+static void handle_client(int client_fd);
+
 /* Message format matching mica.py's CreateMsg */
 struct create_msg {
 	uint32_t cpu;
@@ -44,56 +47,6 @@ static volatile bool is_running = true;
 static struct listen_unit *listener_list = NULL;
 static pthread_mutex_t listener_mutex = PTHREAD_MUTEX_INITIALIZER;
 static bool send_response = false;  // 默认不发送响应
-
-#ifdef SIMPLE_MODE
-static void handle_client(int client_fd)
-{
-	char buffer[BUFFER_SIZE];
-	ssize_t bytes_received;
-
-	bytes_received = recv(client_fd, buffer, BUFFER_SIZE - 1, 0);
-	if (bytes_received < 0) {
-		perror("recv failed");
-		safe_send(client_fd, RESPONSE_FAILED, strlen(RESPONSE_FAILED));
-		return;
-	}
-
-	buffer[bytes_received] = '\0';
-	printf("Received string: %s\n", buffer);
-	safe_send(client_fd, RESPONSE_SUCCESS, strlen(RESPONSE_SUCCESS));
-}
-#else
-static void handle_client(int client_fd)
-{
-	char buffer[BUFFER_SIZE];
-	ssize_t bytes_received;
-
-	bytes_received = recv(client_fd, buffer, sizeof(struct create_msg), 0);
-	if (bytes_received < 0) {
-		perror("recv failed");
-		if (send_response) {
-			safe_send(client_fd, RESPONSE_FAILED, strlen(RESPONSE_FAILED));
-		}
-		return;
-	}
-
-	print_hex_dump(buffer, bytes_received);
-
-	if (bytes_received == sizeof(struct create_msg)) {
-		struct create_msg *msg = (struct create_msg *)buffer;
-		print_create_msg(msg);
-		if (send_response) {
-			safe_send(client_fd, RESPONSE_SUCCESS, strlen(RESPONSE_SUCCESS));
-		}
-	} else {
-		buffer[bytes_received] = '\0';
-		printf("Received control message: %s\n", buffer);
-		if (send_response) {
-			safe_send(client_fd, RESPONSE_SUCCESS, strlen(RESPONSE_SUCCESS));
-		}
-	}
-}
-#endif
 
 static void signal_handler(int signum)
 {
@@ -293,13 +246,63 @@ static void cleanup_listeners(void)
 	listener_list = NULL;
 	pthread_mutex_unlock(&listener_mutex);
 }
+#ifdef SIMPLE_MODE
+static void handle_client(int client_fd)
+{
+	char buffer[BUFFER_SIZE];
+	ssize_t bytes_received;
+
+	bytes_received = recv(client_fd, buffer, BUFFER_SIZE - 1, 0);
+	if (bytes_received < 0) {
+		perror("recv failed");
+		safe_send(client_fd, RESPONSE_FAILED, strlen(RESPONSE_FAILED));
+		return;
+	}
+
+	buffer[bytes_received] = '\0';
+	printf("Received string: %s\n", buffer);
+	safe_send(client_fd, RESPONSE_SUCCESS, strlen(RESPONSE_SUCCESS));
+}
+#else
+static void handle_client(int client_fd)
+{
+	char buffer[BUFFER_SIZE];
+	ssize_t bytes_received;
+
+	bytes_received = recv(client_fd, buffer, sizeof(struct create_msg), 0);
+	if (bytes_received < 0) {
+		perror("recv failed");
+		if (send_response) {
+			safe_send(client_fd, RESPONSE_FAILED, strlen(RESPONSE_FAILED));
+		}
+		return;
+	}
+
+	print_hex_dump(buffer, bytes_received);
+
+	if (bytes_received == sizeof(struct create_msg)) {
+		struct create_msg *msg = (struct create_msg *)buffer;
+		print_create_msg(msg);
+		if (send_response) {
+			safe_send(client_fd, RESPONSE_SUCCESS, strlen(RESPONSE_SUCCESS));
+		}
+	} else {
+		buffer[bytes_received] = '\0';
+		printf("Received control message: %s\n", buffer);
+		if (send_response) {
+			safe_send(client_fd, RESPONSE_SUCCESS, strlen(RESPONSE_SUCCESS));
+		}
+	}
+}
+#endif
+
+
 
 int main(int argc, char *argv[])
 {
 	pthread_t thread;
 	int opt;
 
-	// 处理命令行参数
 	while ((opt = getopt(argc, argv, "r")) != -1) {
 		switch (opt) {
 		case 'r':

@@ -8,11 +8,15 @@ const (
 A simple drop-in replacement for runc that implements basic container lifecycle management APIs
 but does not actually handling any containers following the OCI specification.
 `
-	DefaultRootDir = "/run/rmica"
+	// DefaultRootDir = "/run/rmica"
+	DefaultRootDir = "/tmp/run/rmica"
+
 	Root = DefaultRootDir
-	DefaultMicaSocket = "/var/run/micad.sock"
-	SysVLogPath = "/var/log/rmica"
-	DefaultLogFile = "/var/log/rmica.log"
+	// DefaultMicaSocket = "/var/run/micad.sock"
+
+	DefaultMicaSocket = "/tmp/mica/mica-create.socket"
+	SysVLogPath = "/var/log/rmica" // permission check
+	DefaultLogFile = "/var/tmp/rmica.log"
 
 	StateFilename    = "state.json"
 	ExecFifoFilename = "exec.fifo"
@@ -23,4 +27,6 @@ but does not actually handling any containers following the OCI specification.
 
 	MicaConfigPath = "/etc/mica"
 	MicaSocketName 		 = "mica-create.socket"
+	// prefix of annotaion fields belonging to mica
+	MicaAnnotationPrefix = "org.openeuler.mica."
 )

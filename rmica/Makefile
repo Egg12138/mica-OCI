@@ -58,7 +58,7 @@ build:
 	$(GO) build -o $(BINARY_PATH)
 
 $(BINNAME): build
-	$(BINARY_PATH)
+	$(BINARY_PATH) --debug
 
 clean:
 	rm -f $(BINARY_PATH)

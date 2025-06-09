@@ -13,5 +13,6 @@ var (
 	ErrNotPaused      = errors.New("container not paused")
 	ErrCgroupNotExist = errors.New("cgroup not exist")
 	ErrDebug		   		= errors.New("debug mode")
+	ErrNotImplemented = errors.New("not implemented")
 )
 

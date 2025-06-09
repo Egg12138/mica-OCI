@@ -4,7 +4,6 @@ package pseudo_container
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"rmica/communication"
 	"rmica/logger"
@@ -59,7 +58,7 @@ func (s *StoppedState) status() specs.ContainerState {
 func (s *StoppedState) transition(to ContainerState) error {
 	switch to.(type) {
 	case *RunningState, *RestoredState:
-		s.c.state = to
+		s.c.cstate = to
 		return nil
 	case *StoppedState:
 		return nil
@@ -85,10 +84,10 @@ func (r *RunningState) transition(to ContainerState) error {
 		if r.c.hasInit() {
 			return fmt.Errorf("container is running")
 		}
-		r.c.state = to
+		r.c.cstate = to
 		return nil
 	case *PausedState:
-		r.c.state = to
+		r.c.cstate = to
 		return nil
 	case *RunningState:
 		return nil
@@ -115,7 +114,7 @@ func (p *PausedState) status() specs.ContainerState {
 func (p *PausedState) transition(to ContainerState) error {
 	switch to.(type) {
 	case *RunningState, *StoppedState:
-		p.c.state = to
+		p.c.cstate = to
 		return nil
 	case *PausedState:
 		return nil
@@ -142,7 +141,7 @@ func (c *CreatedState) status() specs.ContainerState {
 func (c *CreatedState) transition(to ContainerState) error {
 	switch to.(type) {
 	case *RunningState, *PausedState, *StoppedState:
-		c.c.state = to
+		c.c.cstate = to
 		logger.Infof("[%s] %s -> %s", c.c.Id(), c.status(), to.status())
 		return nil
 	case *CreatedState:
@@ -179,19 +178,36 @@ func (r *RestoredState) destroy() error {
 // ==================== Helper Functions ====================
 
 // Helper function to destroy container resources
-// TODO mica destroy
-// TODO preHook and postHook
+// 1. remove host container dir
+// 2. remove the task or shut down the clientOS
+// TODO: we have to wrap task config into container spec files 
 func destroy(c *Container) error {
-	res := communication.Send2mica("destrory")
+	// BUG: container informatino and task config is separated, here is just for demo
+	res := communication.Send2micaCmd("rm", c.Id())
 	if res != "" {
 		// TODO: handle response
+		logger.Debugf("destroy container %s: %s", c.Id(), res)
+		logger.Fprintf("destroy container %s: %s", c.Id(), res)
 	}
 
 	// Remove container directory
-	containerDir := filepath.Join(c.root, c.Id())
-	if err := os.RemoveAll(containerDir); err != nil {
+	if err := os.RemoveAll(c.StateDir()); err != nil {
 		return fmt.Errorf("failed to remove container directory: %w", err)
 	}
-	c.state = &StoppedState{c: c}
+
+	if c.config.Hooks != nil {
+		s := c.OCIState()
+		logger.Fprintf("get OCI state: %s [%s]", s.Status, s.Bundle)
+		logger.Fprintf("we do not run hook in demo")
+		s.Status = specs.StateStopped
+	}
+	c.cstate = &StoppedState{c: c}
+	return nil
+}
+
+
+func runHook(hooks *specs.Hooks, name string, state *specs.State) error {
+	logger.Fprintf("run hook %s: %s", name, state)
+	logger.Debugf("run hook %s: %s", name, state)
 	return nil
 }
